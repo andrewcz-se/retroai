@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrofrog</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Press Start 2P', cursive;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px #ff00ff, 0 0 30px #00ffff;
+            padding: 10px;
+            background: #000;
+        }
+        
+        canvas {
+            background-color: #000;
+            display: block;
+        }
+
+        .ui-container {
+            display: flex;
+            justify-content: space-between;
+            width: 480px; /* Same as canvas width */
+            padding: 10px 0;
+            font-size: 14px;
+        }
+
+        #score, #lives, #level, #time {
+            text-shadow: 2px 2px #ff00ff;
+        }
+
+        #start-screen, #game-over-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 48px;
+            color: #76ff03;
+            text-shadow: 4px 4px #ff00ff;
+            margin-bottom: 20px;
+        }
+
+        .start-button, .restart-button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            padding: 15px 30px;
+            background-color: #ff00ff;
+            color: #fff;
+            border: 3px solid #fff;
+            cursor: pointer;
+            box-shadow: 0 0 10px #ff00ff;
+            animation: blink 1s infinite;
+        }
+        
+        .start-button:disabled {
+            animation: none;
+            background-color: #555;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        @keyframes blink {
+            50% { color: #ff00ff; background: #fff;}
+        }
+
+        p {
+            margin-top: 20px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="start-screen">
+        <h1>RETROFROG</h1>
+        <button class="start-button">Start Game</button>
+        <p>Use Arrow Keys to Move<br>Reach the 5 homes at the top to advance!<br>Avoid cars and don't fall in the water.</p>
+    </div>
+
+    <div id="game-over-screen" style="display: none;">
+        <h1>GAME OVER</h1>
+        <p id="final-score"></p>
+        <button class="restart-button">Restart</button>
+    </div>
+
+    <div class="game-container">
+        <div class="ui-container">
+            <div id="score">Score: 0</div>
+            <div id="level">Level: 1</div>
+            <div id="lives">Lives: 3</div>
+        </div>
+        <canvas id="gameCanvas" width="480" height="520"></canvas>
+        <div class="ui-container" style="justify-content: center;">
+             <div id="time">Time: 60</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const scoreEl = document.getElementById('score');
+        const livesEl = document.getElementById('lives');
+        const levelEl = document.getElementById('level');
+        const timeEl = document.getElementById('time');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const finalScoreEl = document.getElementById('final-score');
+        const startButton = document.querySelector('.start-button');
+        const restartButton = document.querySelector('.restart-button');
+
+        const TILE_SIZE = 40;
+        const FROG_SIZE = TILE_SIZE - 8;
+        const COLS = canvas.width / TILE_SIZE;
+        const ROWS = canvas.height / TILE_SIZE;
+
+        let score = 0;
+        let lives = 3;
+        let level = 1;
+        let gameRunning = false;
+        let timeLeft = 60;
+        let timerInterval;
+
+        // --- AUDIO SETUP with .wav files ---
+        const sounds = {
+            hop: 'hop.wav',
+            squash: 'squash.wav',
+            splash: 'splash.wav',
+            home: 'home.wav',
+            levelUp: 'level-up.wav',
+            music: 'music.wav'
+        };
+
+        const backgroundMusic = new Audio(sounds.music);
+        backgroundMusic.loop = true;
+        backgroundMusic.volume = 0.3;
+
+        function playWavSound(soundKey) {
+            // Create a new audio object for each sound effect to allow for overlapping sounds
+            const sound = new Audio(sounds[soundKey]);
+            sound.play().catch(e => console.error(`Could not play sound: ${soundKey}`, e));
+        }
+
+        // --- GAME OBJECTS ---
+        const frog = {
+            x: COLS / 2 * TILE_SIZE + 4,
+            y: (ROWS - 1) * TILE_SIZE + 4,
+            width: FROG_SIZE,
+            height: FROG_SIZE,
+            onLog: false,
+        };
+
+        const homes = [];
+        const HOME_WIDTH = TILE_SIZE * 1.5; // 60px
+        const HOME_SPACING = (canvas.width - 5 * HOME_WIDTH) / 6; // Dynamically calculate spacing
+
+        for (let i = 0; i < 5; i++) {
+            const homeX = HOME_SPACING + i * (HOME_WIDTH + HOME_SPACING);
+            homes.push({ x: homeX, y: TILE_SIZE, width: HOME_WIDTH, height: TILE_SIZE, filled: false, hasHazard: false });
+        }
+
+        let vehicles = [];
+        let logs = [];
+        let turtles = [];
+        let particles = [];
+        let snakes = [];
+
+        // --- GAME LOGIC ---
+        function createObstacles() {
+            vehicles = [];
+            // Lane 1 (bottom) - Trucks
+            for (let i = 0; i < 2; i++) {
+                vehicles.push({ x: i * 250, y: (ROWS - 2) * TILE_SIZE + 4, width: TILE_SIZE * 2, height: FROG_SIZE, speed: 1 + level * 0.5, type: 'truck' });
+            }
+            // Lane 2 - Fast Cars
+            for (let i = 0; i < 3; i++) {
+                vehicles.push({ x: i * 180, y: (ROWS - 3) * TILE_SIZE + 4, width: TILE_SIZE, height: FROG_SIZE, speed: -1.5 - level * 0.5, type: 'racecar' });
+            }
+            // Lane 3 - Long Trucks
+            for (let i = 0; i < 2; i++) {
+                vehicles.push({ x: i * 300, y: (ROWS - 4) * TILE_SIZE + 4, width: TILE_SIZE * 3, height: FROG_SIZE, speed: 2 + level * 0.5, type: 'longtruck' });
+            }
+             // Lane 4 - Cars
+             for (let i = 0; i < 4; i++) {
+                vehicles.push({ x: i * 150, y: (ROWS - 5) * TILE_SIZE + 4, width: TILE_SIZE, height: FROG_SIZE, speed: -1 - level * 0.5, type: 'car' });
+            }
+
+            logs = [];
+            // Log Lane 1 (Shifted up one tile)
+            for (let i = 0; i < 3; i++) logs.push({ x: i * 220, y: (ROWS - 8) * TILE_SIZE, width: TILE_SIZE * 3, height: TILE_SIZE, speed: 1.5 + level * 0.3 });
+             // Log Lane 2 (Shifted up one tile)
+            for (let i = 0; i < 2; i++) logs.push({ x: i * 300, y: (ROWS - 10) * TILE_SIZE, width: TILE_SIZE * 4, height: TILE_SIZE, speed: 1 + level * 0.3 });
+
+            turtles = [];
+            // Turtle Lane 1 (Shifted up one tile) - Single turtles
+            const numTurtles1 = 4;
+            const trackLength1 = canvas.width * 2.5; // Increased track length for more spacing
+            const spacing1 = trackLength1 / numTurtles1;
+            for (let i = 0; i < numTurtles1; i++) {
+                turtles.push({
+                    x: i * spacing1,
+                    y: (ROWS - 9) * TILE_SIZE,
+                    width: TILE_SIZE,
+                    height: TILE_SIZE,
+                    speed: -1.2 - level * 0.3,
+                    isSubmerged: false,
+                    timer: Math.random() * 200 + (i * 50) // Stagger dive timers
+                });
+            }
+
+             // Turtle Lane 2 (Shifted up one tile) - Double turtles
+            const numTurtles2 = 3;
+            const trackLength2 = canvas.width * 2.5; // Longer track for wider objects
+            const spacing2 = trackLength2 / numTurtles2;
+            for (let i = 0; i < numTurtles2; i++) {
+                turtles.push({
+                    x: i * spacing2,
+                    y: (ROWS - 11) * TILE_SIZE,
+                    width: TILE_SIZE * 2,
+                    height: TILE_SIZE,
+                    speed: -1 - level * 0.3,
+                    isSubmerged: false,
+                    timer: Math.random() * 200 + (i * 70) // Stagger dive timers
+                });
+            }
+
+            snakes = [];
+            if (level > 1) {
+                for (let i = 0; i < level -1 && i < 3; i++) {
+                     const logIndex = Math.floor(Math.random() * logs.length);
+                     snakes.push({ on: logs[logIndex], offset: Math.random() * (logs[logIndex].width - TILE_SIZE), width: TILE_SIZE, height: TILE_SIZE});
+                }
+            }
+            
+            homes.forEach(home => home.hasHazard = level > 2 && Math.random() < 0.2);
+        }
+        
+        function resetFrog() {
+            frog.x = COLS / 2 * TILE_SIZE + 4;
+            frog.y = (ROWS - 1) * TILE_SIZE + 4;
+            frog.onLog = false;
+        }
+
+        function loseLife(deathType = 'squash') {
+            if (!gameRunning) return;
+            lives--;
+            createParticles(frog.x, frog.y, 20, 'red');
+            playWavSound(deathType);
+            if (lives <= 0) gameOver();
+            else resetFrog();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(timerInterval);
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+            finalScoreEl.textContent = `Final Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function nextLevel() {
+            level++;
+            score += 1000;
+            createParticles(canvas.width / 2, canvas.height / 2, 50, 'gold');
+            playWavSound('levelUp');
+            homes.forEach(home => home.filled = false);
+            resetFrog();
+            createObstacles();
+            timeLeft = 60;
+        }
+
+        function createParticles(x, y, count, color) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x + FROG_SIZE / 2, y: y + FROG_SIZE / 2,
+                    dx: (Math.random() - 0.5) * 4, dy: (Math.random() - 0.5) * 4,
+                    life: 30, color: color
+                });
+            }
+        }
+
+        // --- DETAILED DRAW FUNCTIONS ---
+        function drawFrog(x, y, w, h) {
+            // Back legs
+            ctx.fillStyle = '#008000'; // Darker green
+            ctx.fillRect(x - 4, y + h * 0.7, w * 0.4, h * 0.3); // Left leg
+            ctx.fillRect(x + w * 0.8, y + h * 0.7, w * 0.4, h * 0.3); // Right leg
+            
+            // Body
+            ctx.fillStyle = '#32CD32'; // Lighter green
+            ctx.fillRect(x, y + h * 0.1, w, h * 0.8);
+            
+            // Eyes
+            const eyeRadius = w / 5;
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(x + w * 0.3, y, eyeRadius, Math.PI, Math.PI * 2);
+            ctx.arc(x + w * 0.7, y, eyeRadius, Math.PI, Math.PI * 2);
+            ctx.fill();
+            
+            // Pupils
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(x + w * 0.3, y, eyeRadius / 2, 0, Math.PI * 2);
+            ctx.arc(x + w * 0.7, y, eyeRadius / 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function drawVehicle(v) {
+            const x = v.x;
+            const y = v.y;
+            const w = v.width;
+            const h = v.height;
+
+            // Simple helper to draw a block
+            const block = (color, bx, by, bw, bh) => {
+                ctx.fillStyle = color;
+                ctx.fillRect(x + bx, y + by, bw, bh);
+            };
+
+            switch(v.type) {
+                case 'car': // Based on the pink car
+                    // Wheels
+                    block('#33ff33', 2, 0, 4, h); // Lime green wheels
+                    block('#33ff33', w - 6, 0, 4, h);
+                    // Body
+                    block('#ff66ff', 0, 4, w, h - 8); // Pink
+                    // Cabin/Windshield
+                    block('#ffccff', w * 0.2, 6, w * 0.6, h - 12); // Lighter pink
+                    // Highlights
+                    block('#66ffff', w * 0.1, 8, w * 0.2, 4); // Cyan
+                    block('#66ffff', w * 0.7, 8, w * 0.2, 4);
+                    block('#66ffff', w * 0.1, h - 12, w * 0.2, 4);
+                    block('#66ffff', w * 0.7, h - 12, w * 0.2, 4);
+                    break;
+                
+                case 'racecar': // Based on the yellow car
+                    // Wheels/Spoilers
+                    block('#ff3333', 0, 0, w, 6); // Red
+                    block('#ff3333', 0, h - 6, w, 6);
+                    block('#990099', 4, 2, 4, h - 4); // Purple accents on wheels
+                    block('#990099', w - 8, 2, 4, h - 4);
+                    // Body
+                    block('#ffff33', w * 0.1, 6, w * 0.8, h - 12); // Yellow
+                    // Cockpit
+                    block('#990099', w * 0.3, 8, w * 0.4, h - 16); // Purple
+                    break;
+
+                case 'truck': // Based on the small red-cab truck
+                    // Wheels
+                    block('#33ff33', 4, 0, 6, h); // Lime green wheels
+                    block('#33ff33', w - 30, 0, 6, h);
+                    // Cab
+                    const cabWidth = 24;
+                    const trailerWidth = w - cabWidth - 2;
+                    if (v.speed > 0) { // Moving right
+                        block('#DCDCDC', 0, 0, trailerWidth, h); // Trailer
+                        block('#ff3333', trailerWidth + 2, 0, cabWidth, h); // Cab
+                    } else { // Moving left
+                        block('#ff3333', 0, 0, cabWidth, h); // Cab
+                        block('#DCDCDC', cabWidth + 2, 0, trailerWidth, h); // Trailer
+                    }
+                    break;
+                
+                case 'longtruck': // Based on the long grey truck
+                     // Wheels
+                    block('#33ff33', 4, 0, 6, h);
+                    block('#33ff33', w - 10, 0, 6, h);
+                    block('#33ff33', w / 2 - 5, 0, 6, h);
+                     // Body
+                    block('#DCDCDC', 0, 2, w, h - 4);
+                     // Cab
+                    const longCabWidth = 20;
+                    if (v.speed > 0) { // Moving right
+                        block('#ff3333', w - longCabWidth, 0, longCabWidth, h);
+                    } else { // Moving left
+                        block('#ff3333', 0, 0, longCabWidth, h);
+                    }
+                    break;
+            }
+        }
+
+        function drawLog(log) {
+            const x = log.x;
+            const y = log.y;
+            const w = log.width;
+            const h = log.height;
+            const radius = 8; // For rounded ends
+
+            // Main log body (rounded rectangle)
+            ctx.fillStyle = '#8B4513'; // SaddleBrown
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + w - radius, y);
+            ctx.arcTo(x + w, y, x + w, y + radius, radius);
+            ctx.lineTo(x + w, y + h - radius);
+            ctx.arcTo(x + w, y + h, x + w - radius, y + h, radius);
+            ctx.lineTo(x + radius, y + h);
+            ctx.arcTo(x, y + h, x, y + h - radius, radius);
+            ctx.lineTo(x, y + radius);
+            ctx.arcTo(x, y, x + radius, y, radius);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Highlight (top)
+            ctx.fillStyle = '#A0522D'; // Sienna
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + w - radius, y);
+            ctx.arcTo(x + w, y, x + w, y + radius, radius);
+            ctx.lineTo(x + w, y + h * 0.2);
+            ctx.lineTo(x, y + h * 0.2);
+            ctx.arcTo(x, y, x + radius, y, radius);
+            ctx.closePath();
+            ctx.fill();
+
+            // Internal wood grain lines
+            ctx.strokeStyle = '#654321'; // Darker brown
+            ctx.lineWidth = 2;
+            for(let i = 0; i < h; i += 5) {
+                ctx.beginPath();
+                ctx.moveTo(x + 5, y + i);
+                ctx.bezierCurveTo(x + w * 0.25, y + i + 2, x + w * 0.75, y + i - 2, x + w - 5, y + i);
+                ctx.stroke();
+            }
+        }
+
+        function drawTurtle(t) {
+            const centerY = t.y + t.height / 2;
+            
+            ctx.globalAlpha = t.isSubmerged ? 0.4 : 1.0;
+
+            // Legs/Flippers
+            if (!t.isSubmerged) {
+                ctx.fillStyle = '#004d00'; // Darker shell color
+                const legW = t.height / 5; // Proportional to height
+                const legH = t.height / 5;
+                ctx.fillRect(t.x, t.y, legW, legH); // top-left
+                ctx.fillRect(t.x + t.width - legW, t.y, legW, legH); // top-right
+                ctx.fillRect(t.x, t.y + t.height - legH, legW, legH); // bottom-left
+                ctx.fillRect(t.x + t.width - legW, t.y + t.height - legH, legW, legH); // bottom-right
+            }
+
+            // --- REVISED SHELL DRAWING (Capsule Shape) ---
+            const radius = t.height / 2.2;
+            const rectWidth = t.width - (2 * radius);
+
+            ctx.fillStyle = '#006400'; // Shell color
+            ctx.beginPath();
+            ctx.arc(t.x + radius, centerY, radius, Math.PI / 2, Math.PI * 3 / 2); // Left semi-circle
+            ctx.lineTo(t.x + radius + rectWidth, centerY - radius); // Top line
+            ctx.arc(t.x + radius + rectWidth, centerY, radius, Math.PI * 3 / 2, Math.PI / 2); // Right semi-circle
+            ctx.closePath(); // Bottom line
+            ctx.fill();
+
+            // Shell pattern
+            ctx.strokeStyle = '#008000';
+            ctx.lineWidth = 2;
+            const numPatterns = Math.floor(t.width / TILE_SIZE);
+            for (let i = 0; i < numPatterns; i++) {
+                const patternCenterX = t.x + (i * TILE_SIZE) + (TILE_SIZE / 2);
+                ctx.beginPath();
+                ctx.moveTo(patternCenterX, centerY - radius * 0.8);
+                ctx.lineTo(patternCenterX, centerY + radius * 0.8);
+                ctx.moveTo(patternCenterX - radius * 0.8, centerY);
+                ctx.lineTo(patternCenterX + radius * 0.8, centerY);
+                ctx.stroke();
+            }
+
+            // Head (only if not submerged)
+            if (!t.isSubmerged) {
+                // Head points in direction of travel
+                const headX = t.speed > 0 ? t.x + t.width + t.height / 5 : t.x - t.height / 5;
+                ctx.fillStyle = '#228B22'; // ForestGreen
+                ctx.beginPath();
+                ctx.arc(headX, centerY, t.height / 5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Eyes on head
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(headX + (t.speed > 0 ? t.height/15 : -t.height/15), centerY - t.height/10, t.height/15, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'black';
+                ctx.beginPath();
+                ctx.arc(headX + (t.speed > 0 ? t.height/15 : -t.height/15), centerY - t.height/10, t.height/30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+             // Bubbles if submerged
+            if (t.isSubmerged) {
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath();
+                ctx.arc(t.x + t.width/2, centerY, 3, 0, Math.PI * 2);
+                ctx.arc(t.x + t.width/2 + 10, centerY - 5, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawSnake(snake) {
+            const x = snake.on.x + snake.offset;
+            const y = snake.on.y + (TILE_SIZE - snake.height)/2;
+            // Wavy body
+            ctx.fillStyle = '#FF4500'; // Orangey-red
+            const segment = snake.width / 4;
+            ctx.fillRect(x, y + snake.height * 0.3, segment, snake.height * 0.4);
+            ctx.fillRect(x + segment, y + snake.height * 0.1, segment, snake.height * 0.8);
+            ctx.fillRect(x + segment * 2, y + snake.height * 0.3, segment, snake.height * 0.4);
+            ctx.fillRect(x + segment * 3, y + snake.height * 0.1, segment, snake.height * 0.8);
+            // Eyes
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(x + snake.width*0.8, y + snake.height*0.2, 3, 3);
+        }
+        
+        function drawHome(home) {
+            if (home.filled) {
+                 // Draw a lily pad for the filled home
+                ctx.fillStyle = '#2E8B57';
+                ctx.beginPath();
+                ctx.arc(home.x + home.width / 2, home.y + home.height / 2, home.width / 2.2, 0.2, Math.PI * 2);
+                ctx.lineTo(home.x + home.width / 2, home.y + home.height / 2);
+                ctx.closePath();
+                ctx.fill();
+                 // Center the frog properly in the wider home
+                 drawFrog(home.x + (home.width - FROG_SIZE) / 2, home.y + 4, FROG_SIZE, FROG_SIZE);
+            } else {
+                 // Dark water for empty home
+                 ctx.fillStyle = '#00008B';
+                 ctx.fillRect(home.x, home.y, home.width, home.height);
+            }
+
+            if (home.hasHazard) {
+                 drawSnake({ on: {x: home.x, y: home.y}, offset: 0, width: home.width, height: home.height});
+            }
+        }
+
+        function draw() {
+            // Background
+            ctx.fillStyle = '#0d0d52'; ctx.fillRect(0, 0, canvas.width, TILE_SIZE * 6);
+            ctx.fillStyle = '#333'; ctx.fillRect(0, TILE_SIZE * 7, canvas.width, TILE_SIZE * 5);
+            ctx.fillStyle = '#1f8a1f'; ctx.fillRect(0, TILE_SIZE * 6, canvas.width, TILE_SIZE);
+            ctx.fillRect(0, TILE_SIZE * 12, canvas.width, TILE_SIZE);
+            ctx.fillRect(0, 0, canvas.width, TILE_SIZE * 2);
+
+            // Road lines
+            ctx.strokeStyle = 'yellow'; ctx.lineWidth = 2;
+            for(let i = 8; i < 12; i++) {
+                ctx.beginPath(); ctx.setLineDash([15, 15]);
+                ctx.moveTo(0, i * TILE_SIZE); ctx.lineTo(canvas.width, i * TILE_SIZE);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // Homes
+            homes.forEach(drawHome);
+
+            logs.forEach(drawLog);
+            turtles.forEach(drawTurtle);
+            vehicles.forEach(drawVehicle);
+            snakes.forEach(drawSnake);
+            drawFrog(frog.x, frog.y, frog.width, frog.height);
+
+            // Particles
+            particles.forEach((p, index) => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life / 30;
+                ctx.fillRect(p.x, p.y, 4, 4);
+                p.x += p.dx; p.y += p.dy; p.life--;
+                if (p.life <= 0) particles.splice(index, 1);
+            });
+            ctx.globalAlpha = 1;
+        }
+
+        // --- UPDATE LOGIC ---
+        function update() {
+            if (!gameRunning) return;
+
+            // Move objects
+            [...vehicles, ...logs, ...turtles].forEach(obj => {
+                obj.x += obj.speed;
+                if (obj.speed > 0 && obj.x > canvas.width) obj.x = -obj.width;
+                else if (obj.speed < 0 && obj.x < -obj.width) obj.x = canvas.width;
+            });
+            
+            // Handle turtle submerging
+            turtles.forEach(t => {
+                t.timer--;
+                if(t.timer < 0){
+                    t.isSubmerged = !t.isSubmerged;
+                    t.timer = t.isSubmerged ? 100 : 200;
+                }
+            });
+
+            // Check for vehicle collisions
+            vehicles.forEach(v => {
+                if (frog.x < v.x + v.width && frog.x + frog.width > v.x && frog.y < v.y + v.height && frog.y + frog.height > v.y) loseLife('squash');
+            });
+            
+            // Check for reaching home OR being in water
+            if (frog.y < (2 * TILE_SIZE)) { // This is the top grass patch + home slots (y=84 and y=44)
+                if (frog.y < (1.5 * TILE_SIZE)) { // Specifically the home slots row (y=44)
+                    let inAHome = false;
+                    homes.forEach(home => {
+                        const frogCenterX = frog.x + frog.width / 2;
+                        if (frogCenterX > home.x && frogCenterX < home.x + home.width && !home.filled) {
+                            if (home.hasHazard) { loseLife('squash'); return; }
+                            home.filled = true;
+                            score += 50 + Math.floor(timeLeft);
+                            createParticles(home.x + home.width / 2, home.y + home.height / 2, 20, 'cyan');
+                            playWavSound('home');
+                            resetFrog();
+                            inAHome = true;
+                        }
+                    });
+                    if (!inAHome) loseLife('squash'); // Died by hitting wall between homes
+                }
+                 // If frog is on the safe grass patch (y=84), do nothing, which is correct.
+            } else if (frog.y < (6 * TILE_SIZE)) { // This is the water area, now correctly ending before the safe row
+                frog.onLog = false;
+                
+                const ridingObjects = [...logs, ...turtles.filter(t => !t.isSubmerged)];
+                ridingObjects.forEach(obj => {
+                     if (frog.x < obj.x + obj.width && frog.x + frog.width > obj.x && frog.y < obj.y + obj.height && frog.y + frog.height > obj.y) {
+                        frog.onLog = true;
+                        frog.x += obj.speed;
+                    }
+                });
+
+                if (!frog.onLog) loseLife('splash');
+
+                // Check for snake collision
+                snakes.forEach(snake => {
+                     if (frog.x < snake.on.x + snake.offset + snake.width && frog.x + frog.width > snake.on.x + snake.offset && frog.y < snake.on.y + snake.height && frog.y + frog.height > snake.on.y) loseLife('squash');
+                });
+            }
+
+            // Check if all homes are filled
+            if (homes.every(home => home.filled)) nextLevel();
+
+            // Boundary checks
+            if (frog.x < 0) frog.x = 0;
+            if (frog.x + frog.width > canvas.width) frog.x = canvas.width - frog.width;
+        }
+
+        function updateUI() {
+            scoreEl.textContent = `Score: ${score}`;
+            livesEl.textContent = `Lives: ${lives}`;
+            levelEl.textContent = `Level: ${level}`;
+            timeEl.textContent = `Time: ${timeLeft}`;
+        }
+
+        // --- GAME LOOP ---
+        function gameLoop() {
+            update();
+            draw();
+            updateUI();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // --- EVENT LISTENERS ---
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            switch(e.key) {
+                case 'ArrowUp':
+                    if (frog.y - TILE_SIZE >= 0) { frog.y -= TILE_SIZE; score += 10; }
+                    playWavSound('hop');
+                    createParticles(frog.x, frog.y + FROG_SIZE, 5, 'white');
+                    break;
+                case 'ArrowDown':
+                    if (frog.y + TILE_SIZE < canvas.height) frog.y += TILE_SIZE;
+                    playWavSound('hop');
+                    break;
+                case 'ArrowLeft':
+                    if (frog.x - TILE_SIZE >= 0) frog.x -= TILE_SIZE;
+                    playWavSound('hop');
+                    break;
+                case 'ArrowRight':
+                    if (frog.x + TILE_SIZE < canvas.width) frog.x += TILE_SIZE;
+                    playWavSound('hop');
+                    break;
+            }
+        });
+
+        function startGame() {
+            score = 0; lives = 3; level = 1; timeLeft = 60;
+            gameRunning = true;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            homes.forEach(home => { home.filled = false; home.hasHazard = false; });
+            resetFrog();
+            createObstacles();
+            
+            backgroundMusic.play().catch(e => console.error("Background music failed to play:", e));
+
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                if (timeLeft <= 0) { loseLife('squash'); timeLeft = 60; }
+            }, 1000);
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+
+        // --- INITIALIZATION ---
+        requestAnimationFrame(gameLoop);
+
+    </script>
+</body>
+</html>
+

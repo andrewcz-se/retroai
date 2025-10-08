@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About Retroman</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(0, 0, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 255, 0.1) 1px, transparent 1px);
+            background-size: 4px 4px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px #00f, 0 0 15px #ff0;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+            color: #ff0; /* Yellow title */
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid #00f;
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px #00f;
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em;
+        }
+
+        li::before {
+            content: '>';
+            position: absolute;
+            left: 0;
+            top: 0;
+            color: #ff0;
+            animation: blink 1s infinite;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: #ff0;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 2px solid #ff0;
+            box-shadow: 0 0 20px #ff0;
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            background-color: #000;
+            color: #ff0;
+            box-shadow: 0 0 30px #ff0, 0 0 10px #fff inset;
+        }
+        
+        .note {
+            background-color: #000033;
+            border-left: 4px solid #00f;
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        code {
+            background-color: #000;
+            padding: 2px 5px;
+            border: 1px solid #000033;
+            color: #ff0;
+        }
+
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid #000033;
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            position: relative;
+            padding-right: 2.5em;
+            transition: color 0.2s;
+            color: #fff;
+        }
+        
+        .collapsible:hover {
+            color: #ffff99; /* Lighter yellow on hover */
+        }
+
+        .collapsible::after {
+            content: '+';
+            font-size: 1.5em;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+            color: #ff0;
+        }
+
+        .collapsible.active::after {
+            content: '-';
+            transform: translateY(-50%) rotate(180deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid #000033;
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Welcome to Retroman</h1>
+        
+        <div class="play-button-container">
+            <a href="retroman.html" class="play-button">Play The Game</a>
+        </div>
+
+        <!-- Section 1: Description (Starts Open) -->
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;">
+            <div class="content-inner">
+                <p>
+                    <strong>Retroman</strong> is a retro arcade game built in HTML5 and JavaScript, paying homage to the timeless classic, <em>Pac-Man</em>. Navigate a maze, eat all the pellets, and avoid the mischievous ghosts. Turn the tables by grabbing a power pellet and chase them down for bonus points!
+                </p>
+            </div>
+        </div>
+
+        <!-- Section 2: How to Play -->
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>Use the arrow keys to guide Retroman through the maze.</p>
+                <ul>
+                    <li><strong>Up Arrow:</strong> Move Up</li>
+                    <li><strong>Down Arrow:</strong> Move Down</li>
+                    <li><strong>Left Arrow:</strong> Move Left</li>
+                    <li><strong>Right Arrow:</strong> Move Right</li>
+                </ul>
+                <p class="note">You can press the next direction key just before reaching a turn to make smoother corners!</p>
+            </div>
+        </div>
+
+        <!-- Section 3: Core Features -->
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                <ul>
+                    <li><strong>Four Unique Ghosts:</strong> Blinky, Pinky, Inky, and Clyde each have their own AI for chasing you down.</li>
+                    <li><strong>Power Pellets:</strong> Eating these larger pellets will make the ghosts vulnerable for a short time.</li>
+                    <li><strong>Bonus Fruit:</strong> A cherry will periodically appear in the maze for extra points.</li>
+                    <li><strong>Special Power-Ups:</strong> Find the Speed Boost to move faster or the Freeze Clock to stop ghosts in their tracks.</li>
+                    <li><strong>CRT Effects:</strong> The game features authentic scanlines and glow effects to emulate a classic arcade monitor.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Section 4: Setup & Customization -->
+        <h2 class="collapsible">Setup & Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To hear the sound effects, place your <code>.wav</code> audio files in the same folder as the <code>index.html</code> game file. The game looks for these specific filenames:</p>
+                <div class="note">
+                    <ul>
+                        <li><code>beginning.wav</code></li>
+                        <li><code>music.wav</code></li>
+                        <li><code>pellet.wav</code></li>
+                        <li><code>power_pellet.wav</code></li>
+                        <li><code>eat_ghost.wav</code></li>
+                        <li><code>death.wav</code></li>
+                        <li><code>fruit.wav</code></li>
+                        <li><code>powerup.wav</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 5: Developer Notes -->
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                    This entire project, from the game logic in <code>index.html</code> to this very website, was created with the assistance of an AI. It serves as a demonstration of how modern tools can be used to rapidly prototype and build fun, interactive experiences.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retroman - A modern tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            });
+        });
+    </script>
+</body>
+</html>

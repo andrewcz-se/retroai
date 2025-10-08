@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retroids - A Retro Arcade Game</title>
+    <!-- Google Fonts for the retro arcade feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #0FF;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+            background-size: 3px 3px;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0%   { opacity:1; }
+            50%  { opacity:0.95; }
+            100% { opacity:1; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px #0FF, 0 0 15px #0FF;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid #0FF;
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px #0FF;
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px #0FF;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em;
+        }
+
+        li::before {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='8,1 15,5 12,14 4,14 1,5' style='fill:none;stroke:%230FF;stroke-width:1.5'/%3E%3C/svg%3E");
+            position: absolute;
+            left: 0;
+            top: 0.4em;
+            animation: spin 10s linear infinite;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: #0FF;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 2px solid #0FF;
+            box-shadow: 0 0 20px #0FF;
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            background-color: #000;
+            color: #0FF;
+            box-shadow: 0 0 30px #0FF, 0 0 10px #fff inset;
+        }
+        
+        .controls, .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2em;
+        }
+
+        .control-item strong, .feature-item strong {
+            display: block;
+            margin-bottom: 0.5em;
+            color: #fff;
+        }
+        
+        .note {
+            background-color: #055;
+            border-left: 4px solid #0FF;
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        code {
+            background-color: #000;
+            padding: 2px 5px;
+            border: 1px solid #055;
+            color: #fff;
+        }
+
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid #055;
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* For mobile */
+            position: relative;
+            padding-right: 2.5em; /* Space for the icon */
+            transition: color 0.2s;
+        }
+        
+        .collapsible:hover {
+            color: #9FF; /* Highlight on hover */
+        }
+
+        .collapsible::after {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='6,2 12,8 6,14' style='fill:none;stroke:%23FFF;stroke-width:2'/%3E%3C/svg%3E");
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid #055; /* Add a subtle separator */
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Welcome to Retroids</h1>
+        
+        <div class="play-button-container">
+            <!-- IMPORTANT: This link should point to your game's HTML file. -->
+            <a href="retroids.html" class="play-button">Play Now</a>
+        </div>
+
+        <!-- Section 1: Description (Starts Open) -->
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;"> <!-- Inline style to have it open by default -->
+            <div class="content-inner">
+                <p>
+                    <strong>Retroids</strong> is a classic arcade space shooter built entirely in HTML5 and JavaScript. It is a faithful homage to the 1979 classic, <em>Asteroids</em>, but with new, modern challenges. The player controls a spaceship in a dangerous asteroid field and must destroy asteroids, UFOs, and mines while avoiding collisions. The game features realistic physics, a progressive level system, and easily customizable sound effects.
+                </p>
+				<p>
+					This webpage and its content, along with the game itself, was created with Gemini AI as a test of the capabilities of 2.5 Pro
+				</p>
+            </div>
+        </div>
+
+        <!-- Section 2: How to Play -->
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                <div class="controls">
+                    <div class="control-item">
+                        <strong>Rotate Left:</strong>
+                        <p>Use the `Left Arrow` Key to turn your ship counter-clockwise.</p>
+                    </div>
+                    <div class="control-item">
+                        <strong>Rotate Right:</strong>
+                        <p>Use the `Right Arrow` Key to turn your ship clockwise.</p>
+                    </div>
+                    <div class="control-item">
+                        <strong>Thrust Forward:</strong>
+                        <p>Use the `Up Arrow` Key to propel your ship in the direction it's pointing.</p>
+                    </div>
+                    <div class="control-item">
+                        <strong>Shoot:</strong>
+                        <p>Press the `Spacebar` to fire your laser cannon.</p>
+                    </div>
+                     <div class="control-item">
+                        <strong>Hyperspace:</strong>
+                        <p>Press the `Down Arrow` Key for an emergency jump to a random location. Use with caution!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Core Features -->
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                <div class="features">
+                    <div class="feature-item">
+                        <strong>UFO Enemies</strong>
+                        <p>Starting from level 2, hostile UFOs will appear, firing projectiles at the player.</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Dynamic Minefields</strong>
+                        <p>Higher levels have a chance to become dangerous minefields with proximity-activated mines.</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Advanced Physics</strong>
+                        <p>Asteroids realistically bounce off each other, and can be destroyed by colliding with mines.</p>
+                    </div>
+                    <div class="feature-item">
+                        <strong>Inertia-Based Movement</strong>
+                        <p>The ship has momentum and will drift through space. Master your thrusters to survive.</p>
+                    </div>
+                     <div class="feature-item">
+                        <strong>Level Progression</strong>
+                        <p>Clearing all threats advances you to the next, more difficult level.</p>
+                    </div>
+                     <div class="feature-item">
+                        <strong>Custom Audio</strong>
+                        <p>The game uses `.wav` files for sound, which can be easily replaced by the user.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 4: Setup & Customization -->
+        <h2 class="collapsible">Setup & Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To hear the sound effects, you must place your audio files in the same folder as the game's HTML file. The game looks for the following specific filenames:</p>
+                <div class="note">
+                    <ul>
+                        <li><code>shoot.wav</code></li>
+                        <li><code>explosion.wav</code></li>
+                        <li><code>player_death.wav</code></li>
+                        <li><code>thrust.wav</code></li>
+                        <li><code>hyperspace.wav</code></li>
+                        <li><code>ufo_shoot.wav</code></li>
+                        <li><code>ufo_destroyed.wav</code></li>
+                        <li><code>mine_explosion.wav</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section 5: Developer Notes -->
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                    The game's logic is contained within the `&lt;script&gt;` tag in the game's HTML file. Key game parameters can be easily tweaked by changing the constant variables at the top of the script, such as `FRICTION`, `SHIP_THRUST`, and `PROJECTILE_SPEED`.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retroids - A modern tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        // Use scrollHeight to get the actual height of the content
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
+

@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrovaders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-container {
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(50, 255, 50, 0.5);
+            position: relative;
+        }
+        canvas {
+            background-color: #0a0a0a;
+            display: block;
+            box-shadow: inset 0 0 15px rgba(50, 255, 50, 0.4);
+        }
+        #scanline-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.0) 0px,
+                rgba(0, 0, 0, 0.0) 2px,
+                rgba(0, 0, 0, 0.3) 3px,
+                rgba(0, 0, 0, 0.3) 4px
+            );
+            z-index: 1;
+        }
+        .ui {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            font-size: 16px;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 15px #fff;
+            text-align: center;
+            z-index: 10;
+        }
+        #message-box h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        #message-box button {
+            font-family: 'Press Start 2P', cursive;
+            background: #fff;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #message-box button:hover {
+            background-color: #ff00ff;
+            color: #fff;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container" class="game-container">
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Lives: <span id="lives">3</span></div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="scanline-overlay"></div>
+    <div id="message-box" class="hidden">
+        <h2 id="message-title">Game Over</h2>
+        <p id="message-text">Your score: 0</p>
+        <button id="restart-button">Restart</button>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const livesEl = document.getElementById('lives');
+    const messageBox = document.getElementById('message-box');
+    const messageTitle = document.getElementById('message-title');
+    const messageText = document.getElementById('message-text');
+    const restartButton = document.getElementById('restart-button');
+
+    const GAME_WIDTH = 800;
+    const GAME_HEIGHT = 600;
+    canvas.width = GAME_WIDTH;
+    canvas.height = GAME_HEIGHT;
+    
+    // Disable image smoothing to keep pixel art crisp
+    ctx.imageSmoothingEnabled = false;
+
+    let audioContext;
+    let backgroundMusic = new Audio('background.wav'); // Placeholder
+    backgroundMusic.loop = true;
+
+    const sounds = {
+        shoot: new Audio('shoot.wav'),
+        invaderKilled: new Audio('invader_killed.wav'),
+        playerDeath: new Audio('player_death.wav'),
+        powerup: new Audio('powerup.wav'),
+        mysteryShipHit: new Audio('mystery_ship.wav')
+    };
+
+
+    // --- Audio Setup ---
+    function playSound(type) {
+       if (sounds[type]) {
+           const sound = sounds[type];
+           sound.currentTime = 0;
+           sound.play().catch(e => console.error("Error playing sound:", e));
+       }
+    }
+    
+    function playBackgroundMusic() {
+        backgroundMusic.play().catch(e => console.error("Error playing music:", e));
+    }
+
+    function stopBackgroundMusic() {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+    }
+
+
+    // --- Game State ---
+    let player;
+    let invaders = [];
+    let playerLasers = [];
+    let invaderLasers = [];
+    let shields = [];
+    let particles = [];
+    let powerUps = [];
+    let mysteryShip = null;
+    
+    // Attract mode variables
+    let stars = [];
+    let titleGlow = 0;
+    let frameCount = 0;
+
+    let score = 0;
+    let level = 1;
+    let lives = 3;
+    let gameOver = false;
+    let gameRunning = false;
+
+    const keys = {
+        ArrowLeft: false,
+        ArrowRight: false,
+        Space: false
+    };
+
+    // --- Game Objects ---
+    class Player {
+        constructor() {
+            this.width = 50;
+            this.height = 30;
+            this.x = (GAME_WIDTH - this.width) / 2;
+            this.y = GAME_HEIGHT - this.height - 20;
+            this.speed = 7;
+            this.color = '#00ff00';
+            this.shootCooldown = 0;
+            this.rapidFire = false;
+            this.invincible = false;
+            this.invincibleTimer = 0;
+        }
+
+        draw() {
+            if (this.invincible && Math.floor(this.invincibleTimer / 10) % 2 === 0) {
+                 return; // Blink effect
+            }
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            // Cannon
+            ctx.fillRect(this.x + this.width * 0.45, this.y, this.width * 0.1, this.height * 0.4);
+            // Main central body
+            ctx.fillRect(this.x + this.width * 0.2, this.y + this.height * 0.2, this.width * 0.6, this.height * 0.8);
+            // Left wing
+            ctx.fillRect(this.x, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.4);
+            // Right wing
+            ctx.fillRect(this.x + this.width * 0.8, this.y + this.height * 0.6, this.width * 0.2, this.height * 0.4);
+            ctx.shadowBlur = 0;
+        }
+
+        update() {
+            if (keys.ArrowLeft && this.x > 0) {
+                this.x -= this.speed;
+            }
+            if (keys.ArrowRight && this.x < GAME_WIDTH - this.width) {
+                this.x += this.speed;
+            }
+            if (keys.Space && this.shootCooldown <= 0) {
+                this.shoot();
+                this.shootCooldown = this.rapidFire ? 5 : 20;
+            }
+            if (this.shootCooldown > 0) {
+                this.shootCooldown--;
+            }
+            if(this.invincible) {
+                this.invincibleTimer--;
+                if(this.invincibleTimer <= 0) {
+                    this.invincible = false;
+                }
+            }
+        }
+        
+        shoot() {
+            playSound('shoot');
+            playerLasers.push(new Laser(this.x + this.width / 2 - 2.5, this.y));
+        }
+        
+        hit() {
+            if (this.invincible) return;
+            lives--;
+            livesEl.textContent = lives;
+            createExplosion(this.x + this.width / 2, this.y + this.height/2, this.color);
+            playSound('playerDeath');
+            if (lives <= 0) {
+                setGameOver(true, score);
+            } else {
+                this.resetPosition();
+                this.invincible = true;
+                this.invincibleTimer = 180; // 3 seconds
+            }
+        }
+
+        resetPosition() {
+            this.x = (GAME_WIDTH - this.width) / 2;
+        }
+    }
+
+    class Laser {
+        constructor(x, y, speed = -8, color = '#00ff00') {
+            this.x = x;
+            this.y = y;
+            this.width = 5;
+            this.height = 15;
+            this.speed = speed;
+            this.color = color;
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+            ctx.shadowBlur = 0;
+        }
+
+        update() {
+            this.y += this.speed;
+        }
+    }
+
+    class MysteryShip {
+        constructor() {
+            this.width = 60;
+            this.height = 25;
+            this.speed = 3;
+            this.direction = Math.random() < 0.5 ? 1 : -1; // Randomly come from left or right
+            this.x = this.direction === 1 ? -this.width : GAME_WIDTH;
+            this.y = 30;
+            this.color = '#ff00ff';
+            this.points = [500, 1000, 1500][Math.floor(Math.random() * 3)]; // Random bonus points
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            // Draw a blocky UFO shape
+            ctx.fillRect(this.x + this.width * 0.2, this.y, this.width * 0.6, this.height * 0.4);
+            ctx.fillRect(this.x, this.y + this.height * 0.4, this.width, this.height * 0.6);
+            ctx.shadowBlur = 0;
+        }
+
+        update() {
+            this.x += this.speed * this.direction;
+            // Remove if it goes off-screen
+            if ((this.direction === 1 && this.x > GAME_WIDTH) || (this.direction === -1 && this.x < -this.width)) {
+                mysteryShip = null;
+            }
+        }
+    }
+
+    const alienDesigns = [
+        // Type 1 (4x4 pixels, scaled)
+        [
+            " 00 ",
+            "0000",
+            "0000",
+            " 00 "
+        ],
+        // Type 2 (4x4 pixels, scaled)
+        [
+            "0 0",
+            "000",
+            " 0 ",
+            "0 0"
+        ],
+        // Type 3 (3x3 pixels, scaled)
+        [
+            "0 0",
+            "000",
+            "0 0"
+        ],
+        // Type 4 (more complex, 5x5 pixels, scaled)
+        [
+            " 0 0 ",
+            "00000",
+            "0 0 0",
+            " 0 0 ",
+            "0   0"
+        ]
+    ];
+    
+    class Invader {
+        constructor(x, y, type, color) {
+            this.x = x;
+            this.y = y;
+            this.originalWidth = 40; // Base width for collision
+            this.originalHeight = 30; // Base height for collision
+            this.width = this.originalWidth;
+            this.height = this.originalHeight;
+            this.color = color;
+            this.type = type % alienDesigns.length; // Cycle through designs
+            this.design = alienDesigns[this.type];
+            this.pixelSize = Math.floor(this.width / this.design[0].length);
+        }
+
+        draw() {
+            const design = this.design;
+            const pixelSize = this.pixelSize;
+
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            design.forEach((row, rIdx) => {
+                for (let cIdx = 0; cIdx < row.length; cIdx++) {
+                    if (row[cIdx] === '0') {
+                        // Center the alien design within its collision box
+                        const offsetX = (this.originalWidth - design[0].length * pixelSize) / 2;
+                        const offsetY = (this.originalHeight - design.length * pixelSize) / 2;
+                        ctx.fillRect(this.x + offsetX + cIdx * pixelSize, this.y + offsetY + rIdx * pixelSize, pixelSize, pixelSize);
+                    }
+                }
+            });
+            ctx.shadowBlur = 0;
+        }
+    }
+    
+    let invaderDirection = 1;
+    let invaderSpeed = 0.5;
+    let invaderDrop = 10;
+    let invaderShootChance = 0.001;
+    let invaderLaserSpeed = 2.5;
+    
+    class Shield {
+        constructor(x) {
+            this.x = x;
+            this.y = GAME_HEIGHT - 120;
+            this.width = 100;
+            this.height = 40;
+            this.parts = [];
+            this.init();
+        }
+        
+        init() {
+            const partSize = 10;
+            for(let r = 0; r < 4; r++) {
+                for(let c = 0; c < 10; c++) {
+                    // Carve out an arch in the middle
+                    if (r > 1 && c > 2 && c < 7) continue;
+                    this.parts.push({x: this.x + c * partSize, y: this.y + r * partSize, size: partSize, health: 3});
+                }
+            }
+        }
+        
+        draw() {
+             ctx.shadowColor = `rgba(0, 255, 128, 0.7)`;
+             ctx.shadowBlur = 10;
+             this.parts.forEach(part => {
+                ctx.fillStyle = `rgba(0, 255, 128, ${part.health / 3})`;
+                ctx.fillRect(part.x, part.y, part.size, part.size);
+            });
+            ctx.shadowBlur = 0;
+        }
+    }
+    
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.size = Math.random() * 5 + 2;
+            this.speedX = Math.random() * 6 - 3;
+            this.speedY = Math.random() * 6 - 3;
+            this.life = 100;
+        }
+        
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.globalAlpha = this.life / 100;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.globalAlpha = 1.0;
+        }
+        
+        update() {
+            this.x += this.speedX;
+            this.y += this.speedY;
+            this.life--;
+        }
+    }
+    
+    class PowerUp {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.size = 20;
+            this.speedY = 2;
+            this.type = Math.random() < 0.5 ? 'rapidFire' : 'shield';
+            this.color = this.type === 'rapidFire' ? '#ffff00' : '#00ffff';
+            this.text = this.type === 'rapidFire' ? 'R' : 'S';
+        }
+
+        draw() {
+            ctx.fillStyle = this.color;
+            ctx.shadowColor = this.color;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#000';
+            ctx.font = '12px "Press Start 2P"';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(this.text, this.x, this.y);
+        }
+
+        update() {
+            this.y += this.speedY;
+        }
+    }
+
+
+    function createStars() {
+        stars = [];
+        for (let i = 0; i < 200; i++) { // Increased star count for a better 3D effect
+            stars.push({
+                x: (Math.random() - 0.5) * GAME_WIDTH,  // Start with a centered origin
+                y: (Math.random() - 0.5) * GAME_HEIGHT, // Start with a centered origin
+                z: Math.random() * GAME_WIDTH,         // Z-depth, start at various distances
+                size: Math.random() + 1
+            });
+        }
+    }
+
+    function createInvaders() {
+        invaders = [];
+        const invaderSpacingX = 60;
+        const invaderSpacingY = 50;
+        const colors = ['#ff4141', '#41ff41', '#4141ff', '#ffff41', '#ff41ff', '#41ffff']; // Pre-defined colors for rows
+
+        // Calculate columns based on game width, leaving some margin
+        const fleetMarginX = GAME_WIDTH * 0.1; // 10% margin on each side
+        const fleetWidth = GAME_WIDTH - (fleetMarginX * 2);
+        const cols = Math.floor(fleetWidth / invaderSpacingX);
+
+        // Calculate rows based on game height and level
+        const baseRows = Math.floor(GAME_HEIGHT / 250); // Add a base row for every 250px of height
+        const rows = Math.max(3, baseRows) + level; // Ensure at least 3 base rows, then add level
+
+        const startX = (GAME_WIDTH - cols * invaderSpacingX) / 2;
+        const startY = 50;
+
+        for (let r = 0; r < rows; r++) {
+            const color = colors[r % colors.length];
+            for (let c = 0; c < cols; c++) {
+                invaders.push(new Invader(startX + c * invaderSpacingX, startY + r * invaderSpacingY, r, color)); // Pass row as type for variety
+            }
+        }
+        invaderSpeed = 0.5 + level * 0.2;
+        invaderShootChance = 0.001 + level * 0.0005;
+        invaderLaserSpeed = 2 + level * 0.5; // Slower start, increases with level
+    }
+    
+    function createShields() {
+        shields = [];
+        const shieldCount = 4;
+        const shieldSpacing = (GAME_WIDTH - shieldCount * 100) / (shieldCount + 1);
+        for(let i=0; i<shieldCount; i++) {
+            shields.push(new Shield(shieldSpacing + i * (100 + shieldSpacing)));
+        }
+    }
+    
+    function createExplosion(x, y, color) {
+        for(let i=0; i < 30; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+    
+    function init() {
+        score = 0;
+        level = 1;
+        lives = 3;
+        gameOver = false;
+        gameRunning = true;
+        
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        livesEl.textContent = lives;
+        
+        player = new Player();
+        playerLasers = [];
+        invaderLasers = [];
+        particles = [];
+        powerUps = [];
+        mysteryShip = null;
+
+        createInvaders();
+        createShields();
+        
+        messageBox.classList.add('hidden');
+        playBackgroundMusic();
+    }
+    
+    function levelUp() {
+        level++;
+        levelEl.textContent = level;
+        player.resetPosition();
+        playerLasers = [];
+        invaderLasers = [];
+        powerUps = [];
+        mysteryShip = null;
+        createInvaders();
+        createShields();
+        showMessageBox(`Level ${level}`, "Get Ready!", 2000);
+    }
+
+    function showMessageBox(title, text, duration) {
+        messageTitle.textContent = title;
+        messageText.textContent = text;
+        restartButton.classList.add('hidden');
+        messageBox.classList.remove('hidden');
+
+        if(duration) {
+            setTimeout(() => {
+                if(!gameOver) messageBox.classList.add('hidden');
+            }, duration);
+        }
+    }
+
+    function setGameOver(isGameOver, finalScore) {
+        gameOver = isGameOver;
+        gameRunning = false;
+        if(isGameOver) {
+            messageTitle.textContent = "Game Over";
+            messageText.textContent = `Your final score: ${finalScore}`;
+            restartButton.classList.remove('hidden');
+            messageBox.classList.remove('hidden');
+            stopBackgroundMusic();
+        }
+    }
+
+    function update() {
+        if (!gameRunning) return;
+        
+        player.update();
+
+        // Spawn and update mystery ship
+        if (!mysteryShip && Math.random() < 0.0005) { // A small chance to spawn each frame
+            mysteryShip = new MysteryShip();
+        }
+
+        if (mysteryShip) {
+            mysteryShip.update();
+        }
+
+        // Update player lasers
+        for (let i = playerLasers.length - 1; i >= 0; i--) {
+            const laser = playerLasers[i];
+            laser.update();
+            if (laser.y < 0) {
+                playerLasers.splice(i, 1);
+            }
+        }
+        
+        // Update invader lasers
+         for (let i = invaderLasers.length - 1; i >= 0; i--) {
+            const laser = invaderLasers[i];
+            laser.update();
+            if (laser.y > GAME_HEIGHT) {
+                invaderLasers.splice(i, 1);
+            }
+        }
+        
+        // Update invaders
+        let wallHit = false;
+        invaders.forEach(invader => {
+            invader.x += invaderSpeed * invaderDirection;
+            if (invader.x <= 0 || invader.x >= GAME_WIDTH - invader.width) {
+                wallHit = true;
+            }
+            if(Math.random() < invaderShootChance) {
+                invaderLasers.push(new Laser(invader.x + invader.width / 2 - 2.5, invader.y + invader.height, invaderLaserSpeed, '#ff0000'));
+            }
+            if(invader.y + invader.height >= player.y) {
+                 setGameOver(true, score);
+            }
+        });
+
+        if (wallHit) {
+            invaderDirection *= -1;
+            invaders.forEach(invader => {
+                invader.y += invaderDrop;
+            });
+        }
+        
+        // Update particles
+        for(let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            if (particles[i].life <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+        
+        // Update powerups
+        for(let i = powerUps.length - 1; i >= 0; i--) {
+            powerUps[i].update();
+            if (powerUps[i].y > GAME_HEIGHT) {
+                powerUps.splice(i, 1);
+            }
+        }
+
+
+        // --- Collision Detection ---
+        // Player lasers vs Mystery Ship
+        if (mysteryShip) {
+            for (let i = playerLasers.length - 1; i >= 0; i--) {
+                const laser = playerLasers[i];
+                if (laser &&
+                    laser.x < mysteryShip.x + mysteryShip.width &&
+                    laser.x + laser.width > mysteryShip.x &&
+                    laser.y < mysteryShip.y + mysteryShip.height &&
+                    laser.y + laser.height > mysteryShip.y
+                ) {
+                    playerLasers.splice(i, 1);
+                    score += mysteryShip.points;
+                    scoreEl.textContent = score;
+                    createExplosion(mysteryShip.x + mysteryShip.width / 2, mysteryShip.y + mysteryShip.height / 2, mysteryShip.color);
+                    playSound('mysteryShipHit');
+                    showMessageBox(`+${mysteryShip.points}`, "BONUS!", 1000);
+                    mysteryShip = null;
+                    break;
+                }
+            }
+        }
+
+        // Player lasers vs Invaders
+        for (let i = playerLasers.length - 1; i >= 0; i--) {
+            for (let j = invaders.length - 1; j >= 0; j--) {
+                const laser = playerLasers[i];
+                const invader = invaders[j];
+                if (laser && invader &&
+                    laser.x < invader.x + invader.width &&
+                    laser.x + laser.width > invader.x &&
+                    laser.y < invader.y + invader.height &&
+                    laser.y + laser.height > invader.y
+                ) {
+                    playerLasers.splice(i, 1);
+                    invaders.splice(j, 1);
+                    score += 100;
+                    scoreEl.textContent = score;
+                    createExplosion(invader.x + invader.width/2, invader.y + invader.height/2, invader.color);
+                    playSound('invaderKilled');
+                    
+                    // Drop powerup
+                    if(Math.random() < 0.1) { // 10% chance
+                        powerUps.push(new PowerUp(invader.x + invader.width/2, invader.y + invader.height/2));
+                    }
+                    
+                    break; 
+                }
+            }
+        }
+        
+        // Invader lasers vs Player
+        for(let i = invaderLasers.length - 1; i >= 0; i--) {
+            const laser = invaderLasers[i];
+            if (
+                laser.x < player.x + player.width &&
+                laser.x + laser.width > player.x &&
+                laser.y < player.y + player.height &&
+                laser.y + laser.height > player.y
+            ) {
+                invaderLasers.splice(i, 1);
+                player.hit();
+                break;
+            }
+        }
+        
+        // Lasers vs Shields
+        const allLasers = [...playerLasers, ...invaderLasers];
+        for(let l = allLasers.length - 1; l >= 0; l--) {
+            const laser = allLasers[l];
+            let laserRemoved = false;
+            for(const shield of shields) {
+                for(let p = shield.parts.length - 1; p >= 0; p--) {
+                    const part = shield.parts[p];
+                     if (
+                        laser.x < part.x + part.size &&
+                        laser.x + laser.width > part.x &&
+                        laser.y < part.y + part.size &&
+                        laser.y + laser.height > part.y
+                    ) {
+                        part.health--;
+                        if(part.health <= 0) {
+                            shield.parts.splice(p, 1);
+                        }
+                        // remove laser
+                        if (playerLasers.includes(laser)) {
+                           playerLasers.splice(playerLasers.indexOf(laser), 1);
+                        } else {
+                           invaderLasers.splice(invaderLasers.indexOf(laser), 1);
+                        }
+                        laserRemoved = true;
+                        break;
+                    }
+                }
+                if(laserRemoved) break;
+            }
+        }
+
+        // Player vs Powerups
+        for(let i = powerUps.length - 1; i >= 0; i--) {
+            const powerUp = powerUps[i];
+            const dist = Math.hypot(player.x + player.width/2 - powerUp.x, player.y + player.height/2 - powerUp.y);
+            if(dist < player.width/2 + powerUp.size/2) {
+                activatePowerUp(powerUp.type);
+                powerUps.splice(i, 1);
+            }
+        }
+
+        // Check for level clear
+        if (invaders.length === 0 && gameRunning) {
+            levelUp();
+        }
+
+    }
+    
+    function activatePowerUp(type) {
+        playSound('powerup');
+        if (type === 'rapidFire') {
+            player.rapidFire = true;
+            setTimeout(() => { player.rapidFire = false; }, 5000); // 5 seconds
+        } else if (type === 'shield') {
+            player.invincible = true;
+            player.invincibleTimer = 300; // 5 seconds of invincibility
+        }
+    }
+
+
+    function draw() {
+        ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+        
+        if (!gameRunning && !gameOver) {
+            // --- Attract Mode Drawing ---
+            frameCount++;
+
+            // 1. Draw and update 3D "moving forward" starfield
+            const speed = 2;
+            const centerX = GAME_WIDTH / 2;
+            const centerY = GAME_HEIGHT / 2;
+
+            ctx.fillStyle = 'white';
+            stars.forEach(star => {
+                star.z -= speed; // Move the star closer to the screen
+
+                // If the star has passed the screen, reset it to the back
+                if (star.z <= 0) {
+                    star.x = (Math.random() - 0.5) * GAME_WIDTH;
+                    star.y = (Math.random() - 0.5) * GAME_HEIGHT;
+                    star.z = GAME_WIDTH;
+                }
+
+                // Project the 3D position to a 2D screen position
+                const perspective = GAME_WIDTH / star.z;
+                const screenX = centerX + star.x * perspective;
+                const screenY = centerY + star.y * perspective;
+                const screenRadius = star.size * perspective;
+
+                // Draw the star if it's within the screen bounds
+                if (screenX > 0 && screenX < GAME_WIDTH && screenY > 0 && screenY < GAME_HEIGHT) {
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+            
+            // 3. Draw pulsing title and blinking text
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#00ff00";
+            
+            // Pulsing title glow
+            titleGlow = 10 + Math.sin(frameCount * 0.05) * 5;
+            ctx.shadowColor = "#00ff00";
+            ctx.shadowBlur = titleGlow;
+            ctx.font = "30px 'Press Start 2P'";
+            ctx.fillText("RETROVADERS", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
+            ctx.shadowBlur = 0; // Reset glow for other text
+
+            // Blinking "Click to Start" text
+            if (Math.floor(frameCount / 30) % 2 === 0) {
+                ctx.font = "20px 'Press Start 2P'";
+                ctx.fillText("Click to Start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+            }
+            return;
+        }
+
+        player.draw();
+        
+        if (mysteryShip) {
+            mysteryShip.draw();
+        }
+
+        playerLasers.forEach(laser => laser.draw());
+        invaderLasers.forEach(laser => laser.draw());
+        invaders.forEach(invader => invader.draw());
+        shields.forEach(shield => shield.draw());
+        particles.forEach(particle => particle.draw());
+        powerUps.forEach(powerUp => powerUp.draw());
+    }
+
+    function gameLoop() {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+    
+    // --- Event Listeners ---
+    window.addEventListener('keydown', (e) => {
+        if (e.code in keys) {
+            keys[e.code] = true;
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code in keys) {
+            keys[e.code] = false;
+        }
+    });
+    
+    canvas.addEventListener('click', () => {
+        if (!gameRunning && !gameOver) {
+            init();
+        }
+    });
+
+    restartButton.addEventListener('click', () => {
+        init();
+    });
+    
+    // Create initial assets for attract mode
+    createStars();
+    
+    // Start the game
+    gameLoop();
+
+</script>
+
+</body>
+</html>
+
+

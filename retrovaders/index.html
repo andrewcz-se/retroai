@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrovaders - A Retro Arcade Game</title>
+    <!-- Google Fonts for the retro arcade feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000;
+            color: #0F0;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+            background-size: 3px 3px;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0%   { opacity:1; }
+            50%  { opacity:0.95; }
+            100% { opacity:1; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px #0F0, 0 0 15px #0F0;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid #0F0;
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px #0F0;
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px #0F0;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em; 
+            margin-bottom: 0.5em;
+        }
+
+        li::before {
+            content: '> ';
+            position: absolute;
+            left: 0;
+            animation: blink 1s infinite;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: #0F0;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 2px solid #0F0;
+            box-shadow: 0 0 20px #0F0;
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            background-color: #000;
+            color: #0F0;
+            box-shadow: 0 0 30px #0F0, 0 0 10px #fff inset;
+        }
+
+        .note {
+            background-color: #030;
+            border-left: 4px solid #0F0;
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid #050;
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* For mobile */
+            position: relative;
+            padding-right: 2.5em; /* Space for the icon */
+            transition: color 0.2s;
+        }
+        
+        .collapsible:hover {
+            color: #9F9; /* Highlight on hover */
+        }
+
+        .collapsible::after {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='6,2 12,8 6,14' style='fill:none;stroke:%230F0;stroke-width:2'/%3E%3C/svg%3E");
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid #030; /* Add a subtle separator */
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>WELCOME TO RETROVADERS</h1>
+        
+        <div class="play-button-container">
+            <a href="retrovaders.html" class="play-button">Start Game</a>
+        </div>
+
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;">
+             <div class="content-inner">
+                <p>
+                    <strong>Retrovaders</strong> is a retro arcade shooter built with HTML5 and Javascript. It is a homage to the arcade classic, Space Invaders, but with new and modern features. The player must defeat waves of aliens while avoiding enemy fire and using shields for protection.
+                </p>
+            </div>
+        </div>
+
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                <ul>
+                    <li><strong>Move Left:</strong> Use the `Left Arrow` key.</li>
+                    <li><strong>Move Right:</strong> Use the `Right Arrow` key.</li>
+                    <li><strong>Shoot:</strong> Press the `Spacebar` to fire your laser.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                 <ul>
+                    <li>Classic, responsive player controls for movement and shooting.</li>
+                    <li>Invaders that move in formation and increase speed as their numbers dwindle.</li>
+                    <li>Destructible shields that provide temporary cover.</li>
+                    <li>Randomly appearing mystery ship for bonus points.</li>
+                    <li>Power-ups that grant temporary rapid-fire or invincibility shields.</li>
+                    <li>A progressive level system with increasing difficulty.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Setup &amp; Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To hear the sound effects, you must place your own audio files in the same folder as the game's HTML file. The game looks for the following specific filenames:</p>
+                <div class="note">
+                    <ul>
+                        <li><code>shoot.wav</code></li>
+                        <li><code>background.wav</code></li>
+                        <li><code>invader_killed.wav</code></li>
+                        <li><code>player_death.wav</code></li>
+                        <li><code>powerup.wav</code></li>
+                        <li><code>mystery_ship.wav</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                   The game's logic is contained within the `&lt;script&gt;` tag in the `retroidvaders.html` file. Game parameters such as player speed, invader speed and laser speed can all be tweaked by changing the variables at the top of the script.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retrovaders - A modern tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+
