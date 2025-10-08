@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrofrog - A Retro Arcade Game</title>
+    <!-- Google Fonts for the retro arcade feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #76ff03; /* Bright green from the game */
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(255, 0, 255, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 4px 4px;
+            animation: flicker 0.1s infinite;
+        }
+
+        @keyframes flicker {
+            0%   { opacity:1; }
+            50%  { opacity:0.98; }
+            100% { opacity:1; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px #ff00ff, 0 0 15px #ff00ff; /* Magenta glow */
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+            color: #76ff03;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid #76ff03;
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px #76ff03;
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px #76ff03;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em; 
+            margin-bottom: 0.5em;
+        }
+
+        li::before {
+            content: '> ';
+            position: absolute;
+            left: 0;
+            color: #ff00ff; /* Magenta bullet point */
+            animation: blink 1.2s infinite;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: #ff00ff;
+            color: #fff;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 3px solid #fff;
+            box-shadow: 0 0 20px #ff00ff;
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            background-color: #1a1a1a;
+            color: #ff00ff;
+            box-shadow: 0 0 30px #ff00ff, 0 0 10px #fff inset;
+        }
+
+        .note {
+            background-color: #2b002b; /* Dark magenta */
+            border-left: 4px solid #ff00ff;
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid #282828;
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* For mobile */
+            position: relative;
+            padding-right: 2.5em; /* Space for the icon */
+            transition: color 0.2s;
+        }
+        
+        .collapsible:hover {
+            color: #c1ff72; /* Lighter green on hover */
+        }
+
+        .collapsible::after {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='6,2 12,8 6,14' style='fill:none;stroke:%2376ff03;stroke-width:2'/%3E%3C/svg%3E");
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid #282828;
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>WELCOME TO RETROFROG</h1>
+        
+        <div class="play-button-container">
+            <a href="retrofrog.html" class="play-button">Start Game</a>
+        </div>
+
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;">
+             <div class="content-inner">
+                <p>
+                    <strong>Retrofrog</strong> is a modern tribute to the classic arcade game Frogger, built entirely in a single HTML file with the Canvas API. Guide Retrofrog across a busy road and a treacherous river to reach the safety of the home slots at the top. With authentic retro visuals, sound effects, and challenging gameplay, it's a nostalgic trip back to the golden age of arcade gaming.
+                </p>
+            </div>
+        </div>
+
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                 <p>The goal is to guide 5 frogs safely into their homes at the top of the screen before the timer runs out. You lose a life if you are hit by a vehicle, fall in the water, or run out of time.</p>
+                <ul>
+                    <li><strong>Move Up:</strong> Use the `Up Arrow` key.</li>
+                    <li><strong>Move Down:</strong> Use the `Down Arrow` key.</li>
+                    <li><strong>Move Left:</strong> Use the `Left Arrow` key.</li>
+                    <li><strong>Move Right:</strong> Use the `Right Arrow` key.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                 <ul>
+                    <li>Classic frog-hopping gameplay across roads and rivers.</li>
+                    <li>Procedurally drawn graphics for all game objects, no external images needed!</li>
+                    <li>A progressive level system with faster traffic and new hazards like snakes.</li>
+                    <li>Complex water physics with moving logs and diving turtles.</li>
+                    <li>Authentic CRT monitor simulation with scanlines and phosphorous glow for a true retro feel.</li>
+                    <li>Scoring system that rewards forward movement, reaching home, and remaining time.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Setup &amp; Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To hear the sound effects, you must place your own audio files in the same folder as the game's HTML file. The game looks for the following specific filenames:</p>
+                <div class="note">
+                    <ul>
+                        <li><code>hop.wav</code></li>
+                        <li><code>squash.wav</code></li>
+                        <li><code>splash.wav</code></li>
+                        <li><code>home.wav</code></li>
+                        <li><code>level-up.wav</code></li>
+                        <li><code>music.wav</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                   The entire game is self-contained within the `index.html` file. All game logic, drawing functions, and styling are available to view and edit in one place. Game parameters such as frog speed, vehicle speeds, and starting lives can all be tweaked by changing the constant variables at the top of the script.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retrofrog - A modern tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            });
+        });
+    </script>
+</body>
+</html>
