@@ -54,7 +54,7 @@
             z-index: 5;
         }
         
-        /* CRT Scanline Effect - Updated for better scaling */
+        /* CRT Scanline Effect */
         .game-container::after {
             content: '';
             position: absolute;
@@ -62,17 +62,18 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAACCAYAAACZgbYnAAAAE0lEQVR42mP4//8/AymAiYFEMAF2_wFnj1I57gAAAABJRU5ErkJggg==');
-            background-size: 100% 3px;
-            opacity: 0.3;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.3) 0px,
+                rgba(0, 0, 0, 0.3) 1px,
+                transparent 1px,
+                transparent 3px
+            );
             pointer-events: none;
             z-index: 12;
-            image-rendering: pixelated;
         }
 
         canvas {
-            position: relative; /* Fix for scanlines */
-            z-index: 1; /* Fix for scanlines */
             display: block;
             background-color: #111;
             width: 100%;
@@ -92,7 +93,7 @@
             font-size: 16px;
             pointer-events: none;
             text-shadow: 2px 2px var(--secondary-color);
-            z-index: 13; 
+            z-index: 11; /* Make sure UI is above glow but below scanlines */
         }
         
         .game-overlay {
@@ -1171,7 +1172,7 @@
                     player.update();
                 }
                 
-                if (gameStarted || attractModeAI.active) {
+                if (gameStarted) {
                      for (let i = bubbles.length - 1; i >= 0; i--) {
                         const b = bubbles[i];
                         b.update();
@@ -1184,9 +1185,7 @@
                             bubbles.splice(i, 1);
                         }
                     }
-                }
-                
-                if (gameStarted) {
+                    
                     enemies.forEach(e => e.update());
                     
                     for (let i = collectibles.length - 1; i >= 0; i--) {
