@@ -48,8 +48,15 @@
             box-shadow: 0 0 15px #030 inset;
         }
 
+        /* New styles for the game grid */
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr; /* Create two equal-width columns */
+            gap: 2em; /* Add some space between the game launchers */
+        }
+
         .game-launcher {
-            margin-bottom: 3em;
+            margin-bottom: 1em; /* Adjusted margin for grid layout */
         }
         
         .game-title {
@@ -75,6 +82,16 @@
             color: #0F0;
             box-shadow: 0 0 30px #0F0, 0 0 10px #fff inset;
         }
+
+        /* Responsive adjustment for smaller screens */
+        @media (max-width: 768px) {
+            .game-grid {
+                grid-template-columns: 1fr; /* Stack to a single column */
+            }
+            .game-title {
+                font-size: 1.5rem;
+            }
+        }
         
     </style>
 </head>
@@ -87,25 +104,31 @@
         Welcome to a collection of retro arcade games reimagined for the modern web. Each game in this collection was developed as a creative collaboration with Gemini, a large language model from Google. The goal was to explore the capabilities of AI in software development by recreating the look, feel, and fun of timeless arcade classics using modern, single-file web applications.
     </p>
 
-    <div class="game-launcher">
-        <h2 class="game-title">Retrovaders</h2>
-        <a href="./retrovaders/index.html" class="launch-btn">LAUNCH PAGE</a>
-    </div>
+    <div class="game-grid">
+        <div class="game-launcher">
+            <h2 class="game-title">Retrovaders</h2>
+            <a href="./retrovaders/index.html" class="launch-btn">LAUNCH PAGE</a>
+        </div>
 
-    <div class="game-launcher">
-        <h2 class="game-title">Retroids</h2>
-        <!-- Note: You will need to create or rename the Retroids index file to "retroids_index.html" for this link to work -->
-        <a href="./retroids/index.html" class="launch-btn">LAUNCH PAGE</a>
-    </div>
-    <div class="game-launcher">
-        <h2 class="game-title">Retroman</h2>
-        <!-- Note: You will need to create or rename the Retroids index file to "retroids_index.html" for this link to work -->
-        <a href="./retroman/index.html" class="launch-btn">LAUNCH PAGE</a>
-    </div>
-    <div class="game-launcher">
-        <h2 class="game-title">Retrofrog</h2>
-        <!-- Note: You will need to create or rename the Retroids index file to "retroids_index.html" for this link to work -->
-        <a href="./retrofrog/index.html" class="launch-btn">LAUNCH PAGE</a>
+        <div class="game-launcher">
+            <h2 class="game-title">Retroids</h2>
+            <a href="./retroids/index.html" class="launch-btn">LAUNCH PAGE</a>
+        </div>
+
+        <div class="game-launcher">
+            <h2 class="game-title">Retroman</h2>
+            <a href="./retroman/index.html" class="launch-btn">LAUNCH PAGE</a>
+        </div>
+
+        <div class="game-launcher">
+            <h2 class="game-title">Retrofrog</h2>
+            <a href="./retrofrog/index.html" class="launch-btn">LAUNCH PAGE</a>
+        </div>
+
+        <div class="game-launcher">
+            <h2 class="game-title">Retrobubble</h2>
+            <a href="./retrobubble/index.html" class="launch-btn">LAUNCH PAGE</a>
+        </div>
     </div>
 </div>
 
