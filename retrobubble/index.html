@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Bubble - A Retro Arcade Game</title>
+    <!-- Google Fonts for the retro arcade feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #00ffcc;
+            --secondary-color: #ff00ff;
+            --background-color: #1a1a2e;
+            --text-color: #ffffff;
+            --dark-accent: #111;
+        }
+
+        body {
+            background-color: var(--background-color);
+            color: var(--text-color);
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(0, 255, 204, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 0, 255, 0.07) 1px, transparent 1px);
+            background-size: 4px 4px;
+            animation: flicker 0.2s infinite;
+        }
+
+        @keyframes flicker {
+            0%   { opacity:1; }
+            50%  { opacity:0.98; }
+            100% { opacity:1; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px var(--primary-color), 0 0 15px var(--secondary-color);
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px var(--primary-color);
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px var(--secondary-color);
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em; 
+            margin-bottom: 0.5em;
+        }
+
+        li::before {
+            content: '> ';
+            color: var(--primary-color);
+            position: absolute;
+            left: 0;
+            animation: blink 1.2s infinite;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: var(--primary-color);
+            color: var(--background-color);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 2px solid var(--primary-color);
+            box-shadow: 0 0 20px var(--primary-color);
+            transition: all 0.2s ease;
+            border-radius: 5px;
+        }
+        
+        .play-button:hover {
+            background-color: var(--background-color);
+            color: var(--primary-color);
+            box-shadow: 0 0 30px var(--primary-color), 0 0 10px var(--secondary-color) inset;
+        }
+
+        .note {
+            background-color: rgba(0, 255, 204, 0.05);
+            border-left: 4px solid var(--primary-color);
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid rgba(255, 0, 255, 0.2);
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* For mobile */
+            position: relative;
+            padding-right: 2.5em; /* Space for the icon */
+            transition: color 0.2s;
+        }
+        
+        .collapsible:hover {
+            color: var(--primary-color); /* Highlight on hover */
+        }
+
+        .collapsible::after {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='6,2 12,8 6,14' style='fill:none;stroke:%2300ffcc;stroke-width:2'/%3E%3C/svg%3E");
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid rgba(255, 0, 255, 0.1); /* Add a subtle separator */
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Welcome to Retro Bubble</h1>
+        
+        <div class="play-button-container">
+            <a href="retrobubble.html" class="play-button">Start Game</a>
+        </div>
+
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;">
+             <div class="content-inner">
+                <p>
+                    <strong>Retro Bubble</strong> is a vibrant arcade platformer built in HTML5, inspired by the 1986 classic "Bubble Bobble". Take control of a cute, bubble-blowing dragon and trap your enemies. Jump on the bubbles to pop them, collect the fruit, and clear all 10 stages!
+                </p>
+            </div>
+        </div>
+
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                <ul>
+                    <li><strong>Move Left/Right:</strong> Use the `Left & Right Arrow` keys.</li>
+                    <li><strong>Jump:</strong> Use the `Up Arrow` key.</li>
+                    <li><strong>Shoot Bubbles:</strong> Press the `Spacebar`.</li>
+                </ul>
+                <p class="note">Trap enemies in your bubbles, then jump on them to defeat them and get bonus items!</p>
+            </div>
+        </div>
+
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                 <ul>
+                    <li>Classic 2D platformer controls with "floaty" jumps and screen wrap-around.</li>
+                    <li>Bubble-blowing mechanics to trap and defeat enemies.</li>
+                    <li>10 unique, single-screen levels with increasing difficulty.</li>
+                    <li>Animated characters with custom-drawn pixel art sprites.</li>
+                    <li>Themed levels with varied, patterned platforms for visual flair.</li>
+                    <li>Authentic retro feel with CRT scanlines and a phosphor glow effect.</li>
+                    <li>Dynamic sound effects generated with Tone.js.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Setup &amp; Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To run the game, place all the asset files in the same folder as the main <strong>retro_bubble.html</strong> file. The game requires the following files:</p>
+                <div class="note">
+                    <ul>
+                        <li><code>player_sprites.png</code></li>
+                        <li><code>monster_sprites.png</code></li>
+                        <li><code>bubble_sprites.png</code></li>
+                        <li><code>bonus_sprites.png</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                   The game's logic is contained within a single `&lt;script&gt;` tag in the `retro_bubble.html` file. Game parameters such as player speed, jump force, level layouts, and animation data can all be tweaked by changing the variables at the top of the script.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retro Bubble - An HTML5 tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    } 
+                });
+            });
+        });
+    </script>
+</body>
+</html>
