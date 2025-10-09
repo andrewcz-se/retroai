@@ -49,7 +49,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            box-shadow: 0 0 120px 20px var(--primary-color) inset, 0 0 20px 10px var(--secondary-color) inset;
+            box-shadow: 0 0 60px 10px var(--primary-color) inset, 0 0 10px 5px var(--secondary-color) inset;
             pointer-events: none;
             z-index: 5;
         }
@@ -208,6 +208,12 @@
             let gameStarted = false;
             let spritesLoaded = false;
             let currentBackground = null;
+            let attractModeAI = {
+                active: false,
+                changeDirectionTimer: 120,
+                jumpTimer: 180,
+                shootTimer: 90
+            };
 
             const keys = {
                 ArrowLeft: false,
@@ -362,6 +368,7 @@
                         loadingText.textContent = 'Retro Bubble';
                         instructions.classList.remove('hidden');
                         startButton.classList.remove('hidden');
+                        attractModeAI.active = true;
                     }
                 };
 
@@ -522,6 +529,14 @@
                 }
 
                 update() {
+                    if (attractModeAI.active) {
+                        this.updateAI();
+                    } else {
+                        this.updatePlayerControlled();
+                    }
+                }
+                
+                updatePlayerControlled() {
                     if (keys.ArrowLeft) {
                         this.dx = -PLAYER_SPEED;
                         this.direction = 'left';
@@ -531,8 +546,44 @@
                     } else {
                         this.dx = 0;
                     }
+                    if (keys.ArrowUp && this.canJump && !this.isJumping && !this.ridingBubble) {
+                        this.dy = -PLAYER_JUMP_FORCE;
+                        this.isJumping = true;
+                        this.canJump = false;
+                        sounds.jump();
+                    }
+                     if (!keys.ArrowUp) {
+                        this.canJump = true;
+                    }
+                    this.applyPhysics();
+                }
 
-                    // --- BUBBLE RIDING LOGIC ---
+                updateAI() {
+                    attractModeAI.changeDirectionTimer--;
+                    if (attractModeAI.changeDirectionTimer <= 0) {
+                        this.direction = this.direction === 'left' ? 'right' : 'left';
+                        attractModeAI.changeDirectionTimer = 120 + Math.random() * 120;
+                    }
+                    this.dx = this.direction === 'left' ? -PLAYER_SPEED / 2 : PLAYER_SPEED / 2;
+
+                    attractModeAI.jumpTimer--;
+                    if (attractModeAI.jumpTimer <= 0 && !this.isJumping) {
+                        this.dy = -PLAYER_JUMP_FORCE;
+                        this.isJumping = true;
+                        attractModeAI.jumpTimer = 180 + Math.random() * 100;
+                    }
+
+                    attractModeAI.shootTimer--;
+                    if (attractModeAI.shootTimer <= 0) {
+                        this.shoot();
+                        attractModeAI.shootTimer = 90 + Math.random() * 60;
+                    }
+
+                    this.applyPhysics();
+                }
+
+                applyPhysics() {
+                     // --- BUBBLE RIDING LOGIC ---
                     if (this.ridingBubble) {
                         if (!bubbles.includes(this.ridingBubble) || this.ridingBubble.isTrapping) {
                             this.ridingBubble = null;
@@ -553,16 +604,6 @@
                                 this.ridingBubble = null;
                             }
                         }
-                    }
-
-                    if (keys.ArrowUp && this.canJump && !this.isJumping && !this.ridingBubble) {
-                        this.dy = -PLAYER_JUMP_FORCE;
-                        this.isJumping = true;
-                        this.canJump = false;
-                        sounds.jump();
-                    }
-                     if (!keys.ArrowUp) {
-                        this.canJump = true;
                     }
 
                     this.x += this.dx;
@@ -610,7 +651,7 @@
                         }
                     }
 
-                    if (this.y > canvas.height) {
+                    if (this.y > canvas.height && !attractModeAI.active) {
                        this.playerHit();
                     }
 
@@ -1125,48 +1166,52 @@
             // --- Game Loop and Logic ---
             
             function update() {
-                if (isGameOver || !gameStarted || !spritesLoaded) return;
-                
-                player.update();
-                
-                for (let i = bubbles.length - 1; i >= 0; i--) {
-                    const b = bubbles[i];
-                    b.update();
-                    if (b.lifespan <= 0) {
-                         if (b.isTrapping) {
-                            b.isTrapping.isTrapped = false;
-                            b.isTrapping.isAngry = true;
-                            b.isTrapping.dx = (b.isTrapping.dx > 0 ? 1 : -1) * (b.isTrapping.type === 'flyer' ? 3.5 : 2.5);
-                        }
-                        bubbles.splice(i, 1);
-                    }
-                }
-                
-                enemies.forEach(e => e.update());
-                
-                for (let i = collectibles.length - 1; i >= 0; i--) {
-                   const c = collectibles[i];
-                   c.update();
-                   if (c.lifespan <= 0) {
-                       collectibles.splice(i, 1);
-                   }
-                }
+                if (isGameOver) return; 
 
-                handleCollisions();
+                if (gameStarted || attractModeAI.active) {
+                    player.update();
+                }
                 
-                if (enemies.length === 0 && gameStarted) {
-                    gameStarted = false; 
-                    sounds.levelClear();
-                    let bonus = 500 * level;
-                    score += bonus;
-                    levelBonusEl.textContent = `Bonus: ${bonus}`;
-                    levelCompleteScreen.classList.remove('hidden');
-                    setTimeout(() => {
-                        levelCompleteScreen.classList.add('hidden');
-                        level++;
-                        loadLevel(level);
-                        gameStarted = true;
-                    }, 2000);
+                if (gameStarted) {
+                     for (let i = bubbles.length - 1; i >= 0; i--) {
+                        const b = bubbles[i];
+                        b.update();
+                        if (b.lifespan <= 0) {
+                             if (b.isTrapping) {
+                                b.isTrapping.isTrapped = false;
+                                b.isTrapping.isAngry = true;
+                                b.isTrapping.dx = (b.isTrapping.dx > 0 ? 1 : -1) * (b.isTrapping.type === 'flyer' ? 3.5 : 2.5);
+                            }
+                            bubbles.splice(i, 1);
+                        }
+                    }
+                    
+                    enemies.forEach(e => e.update());
+                    
+                    for (let i = collectibles.length - 1; i >= 0; i--) {
+                       const c = collectibles[i];
+                       c.update();
+                       if (c.lifespan <= 0) {
+                           collectibles.splice(i, 1);
+                       }
+                    }
+
+                    handleCollisions();
+                    
+                    if (enemies.length === 0 && gameStarted) {
+                        gameStarted = false; 
+                        sounds.levelClear();
+                        let bonus = 500 * level;
+                        score += bonus;
+                        levelBonusEl.textContent = `Bonus: ${bonus}`;
+                        levelCompleteScreen.classList.remove('hidden');
+                        setTimeout(() => {
+                            levelCompleteScreen.classList.add('hidden');
+                            level++;
+                            loadLevel(level);
+                            gameStarted = true;
+                        }, 2000);
+                    }
                 }
             }
 
@@ -1281,6 +1326,7 @@
             }
 
             function startGame() {
+                attractModeAI.active = false;
                 const wasGameOver = isGameOver;
 
                 Tone.start(); 
