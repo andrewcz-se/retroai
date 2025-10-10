@@ -6,14 +6,13 @@
     <title>Retris</title>
     <!-- The font is imported directly from Google Fonts for the retro pixelated look -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-    <!-- Tone.js library for synthesized audio and music -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <!-- Tone.js is no longer needed and has been removed -->
     <style>
         /* CSS is embedded directly into the HTML file */
         body {
             background-color: #1a1a1a;
             color: #f0f0f0;
-            font-family: 'Press Start+2P', cursive;
+            font-family: 'Press Start 2P', cursive;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -256,7 +255,8 @@
         </div>
     </div>
 
-    <!-- .wav sound effects -->
+    <!-- Audio Files -->
+    <!-- Sound Effects -->
     <audio id="moveSound" src="move.wav" preload="auto"></audio>
     <audio id="rotateSound" src="rotate.wav" preload="auto"></audio>
     <audio id="landSound" src="land.wav" preload="auto"></audio>
@@ -264,6 +264,9 @@
     <audio id="tetrisSound" src="tetris.wav" preload="auto"></audio>
     <audio id="levelUpSound" src="level-up.wav" preload="auto"></audio>
     <audio id="gameOverSound" src="game-over.wav" preload="auto"></audio>
+    <!-- Background Music -->
+    <audio id="music" src="music.mp3" loop preload="auto"></audio>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -331,6 +334,8 @@
                 levelUp: document.getElementById('levelUpSound'),
                 gameOver: document.getElementById('gameOverSound')
             };
+            const musicAudio = document.getElementById('music');
+
 
             function playSound(soundId) {
                 const sound = sounds[soundId];
@@ -340,80 +345,6 @@
                 }
             }
             
-            // --- Tone.js Music Setup ---
-            let melodyPart, bassPart;
-
-            const melodyData = [
-                // Part A
-                { time: '0:0:0', note: 'E5', duration: '4n' }, { time: '0:1:0', note: 'B4', duration: '8n' },
-                { time: '0:1:2', note: 'C5', duration: '8n' }, { time: '0:2:0', note: 'D5', duration: '4n' },
-                { time: '0:3:0', note: 'C5', duration: '8n' }, { time: '0:3:2', note: 'B4', duration: '8n' },
-                { time: '1:0:0', note: 'A4', duration: '4n' }, { time: '1:1:0', note: 'A4', duration: '8n' },
-                { time: '1:1:2', note: 'C5', duration: '8n' }, { time: '1:2:0', note: 'E5', duration: '4n' },
-                { time: '1:3:0', note: 'D5', duration: '8n' }, { time: '1:3:2', note: 'C5', duration: '8n' },
-                { time: '2:0:0', note: 'B4', duration: '2n' }, { time: '2:2:0', note: 'C5', duration: '4n' },
-                { time: '2:3:0', note: 'D5', duration: '4n' }, { time: '3:0:0', note: 'E5', duration: '4n' },
-                { time: '3:1:0', note: 'C5', duration: '4n' }, { time: '3:2:0', note: 'A4', duration: '4n' },
-                { time: '3:3:0', note: 'A4', duration: '4n' },
-                // Part B
-                { time: '4:0:0', note: 'D5', duration: '2n' }, { time: '4:2:0', note: 'F5', duration: '8n' },
-                { time: '4:2:2', note: 'A5', duration: '4n' }, { time: '4:3:2', note: 'G5', duration: '8n' },
-                { time: '5:0:0', note: 'F5', duration: '8n' }, { time: '5:0:2', note: 'E5', duration: '2n' },
-                { time: '5:2:2', note: 'C5', duration: '8n' }, { time: '5:3:0', note: 'E5', duration: '4n' },
-                { time: '6:0:0', note: 'D5', duration: '2n' }, { time: '6:2:0', note: 'C5', duration: '8n' },
-                { time: '6:2:2', note: 'B4', duration: '4n' }, { time: '6:3:2', note: 'B4', duration: '8n' },
-                { time: '7:0:0', note: 'C5', duration: '8n' }, { time: '7:0:2', note: 'D5', duration: '4n' },
-                { time: '7:1:2', note: 'E5', duration: '4n' }, { time: '7:2:2', note: 'C5', duration: '4n' },
-                { time: '7:3:2', note: 'A4', duration: '4n' }, { time: '8:0:0', note: 'A4', duration: '2n' },
-            ];
-
-            const bassData = [
-                // Part A
-                { time: '0:0', note: 'A2', duration: '2n' }, { time: '0:2', note: 'E3', duration: '2n' },
-                { time: '1:0', note: 'A2', duration: '2n' }, { time: '1:2', note: 'E3', duration: '2n' },
-                { time: '2:0', note: 'A2', duration: '4n' }, { time: '2:1', note: 'B2', duration: '4n' },
-                { time: '2:2', note: 'C3', duration: '4n' }, { time: '2:3', note: 'D3', duration: '4n' },
-                { time: '3:0', note: 'E3', duration: '2n' }, { time: '3:2', note: 'A2', duration: '2n' },
-                // Part B
-                { time: '4:0', note: 'G2', duration: '2n' }, { time: '4:2', note: 'A2', duration: '2n' },
-                { time: '5:0', note: 'E3', duration: '2n' }, { time: '5:2', note: 'C3', duration: '2n' },
-                { time: '6:0', note: 'G2', duration: '2n' }, { time: '6:2', note: 'C3', duration: '2n' },
-                { time: '7:0', note: 'A2', duration: '2n' }, { time: '7:2', note: 'E3', duration: '2n' },
-                { time: '8:0', note: 'A2', duration: '2n' },
-            ];
-
-            function setupMusic() {
-                const melodySynth = new Tone.FMSynth({
-                    harmonicity: 3.01, modulationIndex: 14,
-                    oscillator: { type: "sine" },
-                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.1 },
-                    modulation: { type: "square" },
-                    modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 },
-                    volume: -10
-                }).toDestination();
-
-                const bassSynth = new Tone.Synth({
-                    oscillator: { type: 'triangle' },
-                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.1 },
-                    volume: -16
-                }).toDestination();
-
-                melodyPart = new Tone.Part((time, value) => {
-                    melodySynth.triggerAttackRelease(value.note, value.duration, time);
-                }, melodyData);
-                
-                bassPart = new Tone.Part((time, value) => {
-                    bassSynth.triggerAttackRelease(value.note, value.duration, time);
-                }, bassData);
-
-                melodyPart.loop = bassPart.loop = true;
-                melodyPart.loopStart = bassPart.loopStart = 0;
-                melodyPart.loopEnd = bassPart.loopEnd = '8m';
-                Tone.Transport.bpm.value = 140;
-            }
-            // --- End Tone.js Music Setup ---
-
-
             const COLORS = [ null, '#FF0D72', '#0DC2FF', '#FFE138', '#F538FF', '#FF8E0D', '#0DFF72', '#3877FF' ];
             const SHAPES = [ [], [[0, 1, 0], [1, 1, 1], [0, 0, 0]], [[0, 0, 0, 0], [2, 2, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0]], [[3, 3], [3, 3]], [[0, 0, 4], [4, 4, 4], [0, 0, 0]], [[5, 0, 0], [5, 5, 5], [0, 0, 0]], [[0, 6, 6], [6, 6, 0], [0, 0, 0]], [[7, 7, 0], [0, 7, 7], [0, 0, 0]] ];
 
@@ -817,7 +748,8 @@
             function gameOver() {
                 isGameOver = true;
                 cancelAnimationFrame(animationFrameId);
-                if (melodyPart) Tone.Transport.stop(); // Stop the music
+                musicAudio.pause();
+                musicAudio.currentTime = 0;
                 playSound('gameOver');
                 gameOverElement.style.display = 'flex';
             }
@@ -833,16 +765,8 @@
                 }
             });
 
-            async function handleStartGame() {
-                await Tone.start(); // Required to start audio in the browser
-                setupMusic(); // No longer needs to wait
-                
-                if (melodyPart) { // Only start if music was set up
-                    Tone.Transport.start();
-                    melodyPart.start(0);
-                    bassPart.start(0);
-                }
-
+            function handleStartGame() {
+                musicAudio.play();
                 cancelAnimationFrame(startAnimationId); // Stop the start screen animation
                 mainTitle.style.display = 'none'; // Hide the main title
                 startScreen.style.display = 'none';
@@ -851,10 +775,12 @@
             }
 
             function handleRestartGame() {
-                if (melodyPart) Tone.Transport.start(); // Restart the music
+                musicAudio.play();
                 gameOverElement.style.display = 'none';
                 startGame();
             }
+
+
 
             startButton.addEventListener('click', handleStartGame);
             restartButton.addEventListener('click', handleRestartGame);
