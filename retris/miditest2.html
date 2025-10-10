@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🎵 WebAudioFont GM MIDI Player</title>
+
+  <!-- Core WebAudioFont engine -->
+  <script src="https://surikov.github.io/webaudiofont/npm/dist/WebAudioFontPlayer.js"></script>
+
+  <!-- Core General MIDI instrument set -->
+  <script src="https://surikov.github.io/webaudiofontdata/sound/0000_Aspirin_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/0080_Chaos_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/0240_JCLive_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/0320_Aspirin_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/0560_GeneralUserGS_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/1180_JCLive_sf2_file.js"></script>
+  <script src="https://surikov.github.io/webaudiofontdata/sound/12835_Chaos_sf2_file.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      text-align: center;
+      padding-top: 70px;
+    }
+    input, button {
+      margin: 10px;
+      padding: 10px 18px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+    }
+    button {
+      background: #00ffc8;
+      color: #111;
+      cursor: pointer;
+    }
+    button:hover { background: #00e0b0; }
+  </style>
+</head>
+<body>
+  <h1>🎹 WebAudioFont GM MIDI Player</h1>
+  <p>Load and play real multi-instrument MIDI files in your browser!</p>
+
+  <input type="file" id="fileInput" accept=".mid" />
+  <br />
+  <button id="playBtn">▶️ Play</button>
+  <button id="stopBtn">⏹ Stop</button>
+
+  <script>
+    // WebAudio setup
+    const AudioContextFunc = window.AudioContext || window.webkitAudioContext;
+    const audioContext = new AudioContextFunc();
+    const player = new WebAudioFontPlayer();
+
+    // Available GM instruments (a few for demo, add more if you like)
+    const gmInstruments = {
+      0: _tone_0000_Aspirin_sf2_file,  // Piano
+      8: _tone_0080_Chaos_sf2_file,    // Celesta
+      24: _tone_0240_JCLive_sf2_file,  // Nylon Guitar
+      32: _tone_0320_Aspirin_sf2_file, // Bass
+      56: _tone_0560_GeneralUserGS_sf2_file, // Trumpet
+      118: _tone_1180_JCLive_sf2_file, // Synth Pad
+      128: _drum_35_Chaos_sf2_file     // Drum kit
+    };
+
+    // Assign default per-channel instruments
+    const channelInstruments = Array(16).fill(0);
+    channelInstruments[9] = 128; // Channel 10 = drums
+
+    document.getElementById("playBtn").addEventListener("click", async () => {
+      const file = document.getElementById("fileInput").files[0];
+      if (!file) {
+        alert("Please select a MIDI file first!");
+        return;
+      }
+
+      await audioContext.resume();
+
+      const arrayBuffer = await file.arrayBuffer();
+      player.cancelQueue(audioContext); // Stop any previous playback
+
+      console.log("🎵 Loading instruments and decoding MIDI...");
+
+      // Load all instruments used
+      let loadPromises = [];
+      for (let i = 0; i < 16; i++) {
+        const instNum = channelInstruments[i];
+        if (gmInstruments[instNum]) {
+          loadPromises.push(
+            new Promise(resolve => {
+              player.loader.decodeAfterLoading(audioContext, gmInstruments[instNum], resolve);
+            })
+          );
+        }
+      }
+
+      await Promise.all(loadPromises);
+
+      console.log("✅ Instruments loaded, starting playback");
+
+      // Play the MIDI file with proper channel mapping
+      player.playMidiArrayBuffer(
+        audioContext,
+        arrayBuffer,
+        audioContext.destination,
+        {
+          instruments: gmInstruments,
+          // Map per channel if desired
+          channelInstruments: channelInstruments
+        }
+      );
+    });
+
+    document.getElementById("stopBtn").addEventListener("click", () => {
+      player.cancelQueue(audioContext);
+      console.log("⏹ Playback stopped");
+    });
+  </script>
+</body>
+</html>
