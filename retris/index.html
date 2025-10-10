@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retris - A Retro Arcade Game</title>
+    <!-- Google Fonts for the retro arcade feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #00ffff;
+            font-family: 'Press Start 2P', cursive;
+            text-align: center;
+            padding: 2em;
+            background-image:
+                linear-gradient(rgba(0, 255, 255, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 255, 0.07) 1px, transparent 1px);
+            background-size: 4px 4px;
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0%   { opacity:1; }
+            50%  { opacity:0.98; }
+            100% { opacity:1; }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        h1, h2 {
+            text-shadow: 0 0 10px #00ffff, 0 0 15px #00ffff;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 0.5em;
+            text-align: center;
+            color: #ffcc00;
+             text-shadow: 0 0 10px #ffcc00, 0 0 15px #ffcc00, 3px 3px 0 #cc0000;
+        }
+        
+        h2 {
+            font-size: 1.5em;
+            margin-top: 2em;
+            margin-bottom: 1em;
+            border-bottom: 2px solid #00ffff;
+            padding-bottom: 0.3em;
+            box-shadow: 0 4px 10px -8px #00ffff;
+        }
+
+        p, li {
+            font-size: 0.9em;
+            line-height: 1.8;
+            text-shadow: 0 0 5px #00ffff;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        li {
+            position: relative;
+            padding-left: 2em; 
+            margin-bottom: 0.5em;
+        }
+
+        li::before {
+            content: '■';
+            position: absolute;
+            left: 0;
+            animation: blink 1.2s infinite;
+            color: #ffcc00;
+        }
+
+        .play-button-container {
+            text-align: center;
+            margin: 3em 0;
+        }
+
+        .play-button {
+            display: inline-block;
+            background-color: #39ff14;
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1.5em;
+            text-decoration: none;
+            padding: 15px 30px;
+            border: 2px solid #39ff14;
+            box-shadow: 0 0 20px #39ff14;
+            transition: all 0.2s ease;
+        }
+        
+        .play-button:hover {
+            background-color: #000;
+            color: #39ff14;
+            box-shadow: 0 0 30px #39ff14, 0 0 10px #fff inset;
+        }
+
+        .note {
+            background-color: rgba(0, 50, 50, 0.3);
+            border-left: 4px solid #00ffff;
+            padding: 1em;
+            margin-top: 1em;
+        }
+        
+        footer {
+            margin-top: 4em;
+            padding-top: 2em;
+            border-top: 1px solid #077;
+            text-align: center;
+            font-size: 0.8em;
+        }
+
+        /* --- ACCORDION STYLES --- */
+        .collapsible {
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent; /* For mobile */
+            position: relative;
+            padding-right: 2.5em; /* Space for the icon */
+            transition: color 0.2s;
+        }
+        
+        .collapsible:hover {
+            color: #9fffff; /* Highlight on hover */
+        }
+
+        .collapsible::after {
+            content: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpolygon points='6,2 12,8 6,14' style='fill:none;stroke:%2300ffff;stroke-width:2'/%3E%3C/svg%3E");
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%) rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .collapsible.active::after {
+            transform: translateY(-50%) rotate(90deg);
+        }
+
+        .content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+            border-top: 1px solid #077; /* Add a subtle separator */
+        }
+
+        .content-inner {
+            padding: 1.5em 0.5em;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Welcome to Retris</h1>
+        
+        <div class="play-button-container">
+            <a href="retris.html" class="play-button">Start Game</a>
+        </div>
+
+        <h2 class="collapsible active">Description</h2>
+        <div class="content" style="max-height: 1000px;">
+             <div class="content-inner">
+                <p>
+                    <strong>Retris</strong> is a fully-featured, retro-style version of the classic tile-matching puzzle game, built in HTML5. It captures the look and feel of 1980s arcade games with pixel-art graphics, authentic synthesized music and sound effects, and smooth, addictive gameplay.
+                </p>
+            </div>
+        </div>
+
+        <h2 class="collapsible">How to Play</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>The goal is to manipulate falling blocks (Tetrominoes) to create complete horizontal lines. Completed lines disappear, earning you points. The game ends when the blocks stack up to the top of the screen.</p>
+                <h3>Keyboard Controls:</h3>
+                <ul>
+                    <li><strong>Move Left/Right:</strong> `Left` / `Right` Arrow keys.</li>
+                    <li><strong>Rotate Piece:</strong> `Up` Arrow key.</li>
+                    <li><strong>Soft Drop (Faster Fall):</strong> `Down` Arrow key.</li>
+                    <li><strong>Hard Drop (Instant Fall):</strong> `Spacebar`.</li>
+                </ul>
+                <h3>Gamepad Controls:</h3>
+                <ul>
+                    <li><strong>Move:</strong> D-Pad Left / Right / Down.</li>
+                    <li><strong>Rotate Piece:</strong> `A` Button.</li>
+                    <li><strong>Hard Drop:</strong> `B` Button.</li>
+                    <li><strong>Start Game:</strong> `Start` Button.</li>
+                </ul>
+            </div>
+        </div>
+
+        <h2 class="collapsible">Core Features</h2>
+        <div class="content">
+            <div class="content-inner">
+                 <ul>
+                    <li>Authentic retro gameplay on a 10x20 grid.</li>
+                    <li>Seven standard Tetromino shapes with vibrant, pixel-art styling.</li>
+                    <li>Full keyboard and gamepad support for responsive controls.</li>
+                    <li>Dynamic scoring system for single, double, triple, and "Tetris" line clears.</li>
+                    <li>Progressive difficulty with increasing speed as you level up.</li>
+                    <li>A rich, synthesized chiptune soundtrack and classic sound effects.</li>
+                    <li>Visual flair including landing particles, 3D-beveled blocks, and custom UI frames.</li>
+                    <li>Randomly changing backgrounds on each level-up for a fresh visual experience.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Setup &amp; Customization</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>To experience all visual and audio features, you can place your own media files in the same folder as the game's `index.html` file. The game looks for the following specific filenames:</p>
+                <div class="note">
+                    <h3>Sound Effects (.wav)</h3>
+                    <ul>
+                        <li><code>move.wav</code></li>
+                        <li><code>rotate.wav</code></li>
+                        <li><code>land.wav</code></li>
+                        <li><code>line-clear.wav</code></li>
+                        <li><code>tetris.wav</code></li>
+                        <li><code>level-up.wav</code></li>
+                        <li><code>game-over.wav</code></li>
+                    </ul>
+                     <h3>Background Images (.jpg)</h3>
+                    <ul>
+                        <li><code>background1.jpg</code></li>
+                        <li><code>background2.jpg</code></li>
+                        <li><code>background3.jpg</code></li>
+                        <li><code>background4.jpg</code></li>
+                        <li><code>background5.jpg</code></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <h2 class="collapsible">Developer Notes</h2>
+        <div class="content">
+            <div class="content-inner">
+                <p>
+                   The entire game is self-contained within the `index.html` file. All game logic, including parameters for colors, shapes, piece drop speed, and music notes, can be found and tweaked within the `&lt;script&gt;` tag at the bottom of the file.
+                </p>
+            </div>
+        </div>
+
+        <footer>
+            <p>Retris - A modern tribute to a timeless classic.</p>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const collapsibles = document.querySelectorAll('.collapsible');
+
+            collapsibles.forEach(header => {
+                header.addEventListener('click', function() {
+                    this.classList.toggle('active');
+                    const content = this.nextElementSibling;
+                    
+                    if (content.style.maxHeight) {
+                        content.style.maxHeight = null;
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + "px";
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
+

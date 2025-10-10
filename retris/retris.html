@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retris</title>
+    <!-- The font is imported directly from Google Fonts for the retro pixelated look -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <!-- Tone.js library for synthesized audio and music -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        /* CSS is embedded directly into the HTML file */
+        body {
+            background-color: #1a1a1a;
+            color: #f0f0f0;
+            font-family: 'Press Start+2P', cursive;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            margin: 0;
+            padding-top: 20px;
+            overflow: hidden; /* Prevents scrollbars from animation */
+        }
+
+        /* The main title at the top of the page */
+        body > h1 {
+            font-size: 3rem;
+            color: #ffcc00;
+            text-shadow: 3px 3px 0 #cc0000;
+            animation: flicker 1.5s infinite alternate;
+            margin-bottom: 20px;
+        }
+
+        @keyframes flicker {
+            0%, 18%, 22%, 25%, 53%, 57%, 100% {
+                text-shadow:
+                3px 3px 0 #cc0000,
+                0 0 5px #ffcc00,
+                0 0 10px #ffcc00,
+                0 0 20px #ff8c00,
+                0 0 30px #ff8c00,
+                0 0 40px #ff8c00;
+            }
+            20%, 24%, 55% {       
+                text-shadow: none;
+            }
+        }
+
+        @keyframes button-glow {
+            from {
+                box-shadow: 0 0 5px #39ff14, 0 0 10px #fff;
+            }
+            to {
+                box-shadow: 0 0 20px #39ff14, 0 0 30px #39ff14, 0 0 40px #fff;
+            }
+        }
+        
+        /* The main container uses a custom pixel-art border image */
+        .game-container {
+            display: none; /* Initially hidden */
+            flex-wrap: wrap; /* Allows side panel to wrap on smaller screens */
+            justify-content: center;
+            gap: 20px;
+            background-color: #000;
+            padding: 20px;
+            /* New styled border */
+            border-style: solid;
+            border-width: 16px;
+            border-image-source: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 0H16V8H8V0ZM0 8H8V16H0V8ZM16 8H24V16H16V8ZM8 16H16V24H8V16Z" fill="%23555"/><path fill-rule="evenodd" clip-rule="evenodd" d="M8 4H16V8H8V4ZM4 8H8V16H4V8ZM16 8H20V16H16V8ZM8 16H16V20H8V16Z" fill="%23888"/><path d="M5 5H7V7H5V5ZM17 5H19V7H17V5ZM5 17H7V19H5V17ZM17 17H19V19H17V17Z" fill="%2300ffff"/></svg>');
+            border-image-slice: 8;
+            border-image-repeat: round;
+            filter: drop-shadow(0 0 15px rgba(0,255,255,0.4));
+        }
+
+        /* Canvases and info boxes get a similar, but thinner, styled border */
+        canvas, .info-box {
+            background-color: #0d0d0d;
+            border-style: solid;
+            border-width: 8px;
+            border-image-source: url('data:image/svg+xml;utf8,<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M8 0H16V8H8V0ZM0 8H8V16H0V8ZM16 8H24V16H16V8ZM8 16H16V24H8V16Z" fill="%23444"/><path fill-rule="evenodd" clip-rule="evenodd" d="M8 4H16V8H8V4ZM4 8H8V16H4V8ZM16 8H20V16H16V8ZM8 16H16V20H8V16Z" fill="%23666"/></svg>');
+            border-image-slice: 8;
+            border-image-repeat: round;
+        }
+
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 150px;
+        }
+
+        .side-panel h2 {
+            margin: 10px 0 10px 0;
+            font-size: 1rem;
+            color: #00ffff;
+        }
+
+        #nextCanvas {
+            background-color: #111;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            width: 100%;
+            background: #222;
+            padding: 5px;
+            margin-bottom: 15px;
+        }
+
+        .info-box p {
+            margin: 0;
+            font-size: 1.2rem;
+            color: #fff;
+        }
+
+        .game-over-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none; 
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        #startScreenCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Place canvas behind the content */
+        }
+
+        .game-over-box {
+            background: rgba(17, 17, 17, 0.9);
+            padding: 40px;
+            text-align: center;
+            position: relative;
+            border-style: solid;
+            border-width: 4px;
+            border-radius: 5px;
+        }
+        
+        #startScreen .game-over-box {
+            border-color: #00ffff;
+            box-shadow: 0 0 25px rgba(0, 255, 255, 0.7);
+        }
+
+        #gameOver .game-over-box {
+            border-color: #cc0000;
+            box-shadow: 0 0 20px #cc0000;
+        }
+
+        #startScreen .game-over-box h1 {
+            animation: flicker 1.5s infinite alternate;
+        }
+
+        .game-over-box h1 {
+            font-size: 3rem;
+            color: #ffcc00;
+            text-shadow: 3px 3px 0 #cc0000;
+        }
+
+        .game-over-box h2 {
+             color: #cc0000;
+        }
+
+        .controls-info {
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 30px;
+            line-height: 1.5;
+        }
+        
+        #startButton, #restartButton {
+            color: #1a1a1a;
+            font-family: 'Press Start 2P', cursive;
+            border: 2px solid #fff;
+            padding: 15px 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        
+        #startButton {
+             background-color: #39ff14; /* Neon Green */
+             animation: button-glow 1.5s infinite alternate ease-in-out;
+        }
+        
+        #startButton:hover {
+            background-color: #fff;
+            color: #39ff14;
+        }
+
+        #restartButton {
+            background-color: #ffcc00;
+        }
+
+        #restartButton:hover {
+            background-color: #fff;
+            color: #cc0000;
+        }
+    </style>
+</head>
+<body>
+    <!-- The main title of the game -->
+    <h1>RETRIS</h1>
+
+    <!-- This container holds the game canvas and the side info panel -->
+    <div class="game-container">
+        <!-- Main game canvas where the action happens -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Side panel for displaying next piece, score, etc. -->
+        <div class="side-panel">
+            <h2>NEXT</h2>
+            <canvas id="nextCanvas"></canvas>
+            <div class="info-box">
+                <h2>SCORE</h2>
+                <p id="score">0</p>
+            </div>
+            <div class="info-box">
+                <h2>LINES</h2>
+                <p id="lines">0</p>
+            </div>
+            <div class="info-box">
+                <h2>LEVEL</h2>
+                <p id="level">0</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Start screen, shown by default -->
+    <div id="startScreen" class="game-over-overlay" style="display: flex;">
+        <canvas id="startScreenCanvas"></canvas>
+        <div class="game-over-box">
+            <h1>RETRIS</h1>
+            <button id="startButton">START GAME</button>
+            <p class="controls-info">
+                Use Arrow Keys to Move & Rotate<br>Spacebar to Hard Drop
+            </p>
+        </div>
+    </div>
+    
+    <!-- Game Over screen, hidden by default -->
+    <div id="gameOver" class="game-over-overlay">
+        <div class="game-over-box">
+            <h2>GAME OVER</h2>
+            <button id="restartButton">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <!-- .wav sound effects -->
+    <audio id="moveSound" src="move.wav" preload="auto"></audio>
+    <audio id="rotateSound" src="rotate.wav" preload="auto"></audio>
+    <audio id="landSound" src="land.wav" preload="auto"></audio>
+    <audio id="lineClearSound" src="line-clear.wav" preload="auto"></audio>
+    <audio id="tetrisSound" src="tetris.wav" preload="auto"></audio>
+    <audio id="levelUpSound" src="level-up.wav" preload="auto"></audio>
+    <audio id="gameOverSound" src="game-over.wav" preload="auto"></audio>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Game Setup
+            const canvas = document.getElementById('gameCanvas');
+            const context = canvas.getContext('2d');
+            const nextCanvas = document.getElementById('nextCanvas');
+            const nextContext = nextCanvas.getContext('2d');
+
+            const COLS = 10;
+            const ROWS = 20;
+            const BLOCK_SIZE = 30;
+
+            context.canvas.width = COLS * BLOCK_SIZE;
+            context.canvas.height = ROWS * BLOCK_SIZE;
+            nextContext.canvas.width = 4 * BLOCK_SIZE;
+            nextContext.canvas.height = 4 * BLOCK_SIZE;
+
+            // Game Elements
+            const scoreElement = document.getElementById('score');
+            const linesElement = document.getElementById('lines');
+            const levelElement = document.getElementById('level');
+            
+            // Screen & Button Elements
+            const mainTitle = document.querySelector('body > h1');
+            const gameContainer = document.querySelector('.game-container');
+            const startScreen = document.getElementById('startScreen');
+            const startButton = document.getElementById('startButton');
+            const gameOverElement = document.getElementById('gameOver');
+            const restartButton = document.getElementById('restartButton');
+
+            // --- Background Image Setup ---
+            const backgroundImages = [
+                'background1.jpg',
+                'background2.jpg',
+                'background3.jpg',
+                'background4.jpg',
+                'background5.jpg'
+            ];
+            let currentBackgroundIndex = -1;
+            const backgroundImage = new Image();
+            
+            function changeBackground() {
+                let newIndex;
+                if (backgroundImages.length > 1) {
+                    do {
+                        newIndex = Math.floor(Math.random() * backgroundImages.length);
+                    } while (newIndex === currentBackgroundIndex);
+                } else {
+                    newIndex = 0;
+                }
+                currentBackgroundIndex = newIndex;
+                backgroundImage.src = backgroundImages[currentBackgroundIndex];
+            }
+            // --- End Background Image Setup ---
+
+
+            // Audio Elements Setup
+            const sounds = {
+                move: document.getElementById('moveSound'),
+                rotate: document.getElementById('rotateSound'),
+                land: document.getElementById('landSound'),
+                lineClear: document.getElementById('lineClearSound'),
+                tetris: document.getElementById('tetrisSound'),
+                levelUp: document.getElementById('levelUpSound'),
+                gameOver: document.getElementById('gameOverSound')
+            };
+
+            function playSound(soundId) {
+                const sound = sounds[soundId];
+                if (sound) {
+                    sound.currentTime = 0;
+                    sound.play().catch(e => console.error(`Sound ${soundId} failed to play:`, e));
+                }
+            }
+            
+            // --- Tone.js Music Setup ---
+            let melodyPart, bassPart;
+
+            const melodyData = [
+                // Part A
+                { time: '0:0:0', note: 'E5', duration: '4n' }, { time: '0:1:0', note: 'B4', duration: '8n' },
+                { time: '0:1:2', note: 'C5', duration: '8n' }, { time: '0:2:0', note: 'D5', duration: '4n' },
+                { time: '0:3:0', note: 'C5', duration: '8n' }, { time: '0:3:2', note: 'B4', duration: '8n' },
+                { time: '1:0:0', note: 'A4', duration: '4n' }, { time: '1:1:0', note: 'A4', duration: '8n' },
+                { time: '1:1:2', note: 'C5', duration: '8n' }, { time: '1:2:0', note: 'E5', duration: '4n' },
+                { time: '1:3:0', note: 'D5', duration: '8n' }, { time: '1:3:2', note: 'C5', duration: '8n' },
+                { time: '2:0:0', note: 'B4', duration: '2n' }, { time: '2:2:0', note: 'C5', duration: '4n' },
+                { time: '2:3:0', note: 'D5', duration: '4n' }, { time: '3:0:0', note: 'E5', duration: '4n' },
+                { time: '3:1:0', note: 'C5', duration: '4n' }, { time: '3:2:0', note: 'A4', duration: '4n' },
+                { time: '3:3:0', note: 'A4', duration: '4n' },
+                // Part B
+                { time: '4:0:0', note: 'D5', duration: '2n' }, { time: '4:2:0', note: 'F5', duration: '8n' },
+                { time: '4:2:2', note: 'A5', duration: '4n' }, { time: '4:3:2', note: 'G5', duration: '8n' },
+                { time: '5:0:0', note: 'F5', duration: '8n' }, { time: '5:0:2', note: 'E5', duration: '2n' },
+                { time: '5:2:2', note: 'C5', duration: '8n' }, { time: '5:3:0', note: 'E5', duration: '4n' },
+                { time: '6:0:0', note: 'D5', duration: '2n' }, { time: '6:2:0', note: 'C5', duration: '8n' },
+                { time: '6:2:2', note: 'B4', duration: '4n' }, { time: '6:3:2', note: 'B4', duration: '8n' },
+                { time: '7:0:0', note: 'C5', duration: '8n' }, { time: '7:0:2', note: 'D5', duration: '4n' },
+                { time: '7:1:2', note: 'E5', duration: '4n' }, { time: '7:2:2', note: 'C5', duration: '4n' },
+                { time: '7:3:2', note: 'A4', duration: '4n' }, { time: '8:0:0', note: 'A4', duration: '2n' },
+            ];
+
+            const bassData = [
+                // Part A
+                { time: '0:0', note: 'A2', duration: '2n' }, { time: '0:2', note: 'E3', duration: '2n' },
+                { time: '1:0', note: 'A2', duration: '2n' }, { time: '1:2', note: 'E3', duration: '2n' },
+                { time: '2:0', note: 'A2', duration: '4n' }, { time: '2:1', note: 'B2', duration: '4n' },
+                { time: '2:2', note: 'C3', duration: '4n' }, { time: '2:3', note: 'D3', duration: '4n' },
+                { time: '3:0', note: 'E3', duration: '2n' }, { time: '3:2', note: 'A2', duration: '2n' },
+                // Part B
+                { time: '4:0', note: 'G2', duration: '2n' }, { time: '4:2', note: 'A2', duration: '2n' },
+                { time: '5:0', note: 'E3', duration: '2n' }, { time: '5:2', note: 'C3', duration: '2n' },
+                { time: '6:0', note: 'G2', duration: '2n' }, { time: '6:2', note: 'C3', duration: '2n' },
+                { time: '7:0', note: 'A2', duration: '2n' }, { time: '7:2', note: 'E3', duration: '2n' },
+                { time: '8:0', note: 'A2', duration: '2n' },
+            ];
+
+            function setupMusic() {
+                const melodySynth = new Tone.FMSynth({
+                    harmonicity: 3.01, modulationIndex: 14,
+                    oscillator: { type: "sine" },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.1 },
+                    modulation: { type: "square" },
+                    modulationEnvelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 },
+                    volume: -10
+                }).toDestination();
+
+                const bassSynth = new Tone.Synth({
+                    oscillator: { type: 'triangle' },
+                    envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.1 },
+                    volume: -16
+                }).toDestination();
+
+                melodyPart = new Tone.Part((time, value) => {
+                    melodySynth.triggerAttackRelease(value.note, value.duration, time);
+                }, melodyData);
+                
+                bassPart = new Tone.Part((time, value) => {
+                    bassSynth.triggerAttackRelease(value.note, value.duration, time);
+                }, bassData);
+
+                melodyPart.loop = bassPart.loop = true;
+                melodyPart.loopStart = bassPart.loopStart = 0;
+                melodyPart.loopEnd = bassPart.loopEnd = '8m';
+                Tone.Transport.bpm.value = 140;
+            }
+            // --- End Tone.js Music Setup ---
+
+
+            const COLORS = [ null, '#FF0D72', '#0DC2FF', '#FFE138', '#F538FF', '#FF8E0D', '#0DFF72', '#3877FF' ];
+            const SHAPES = [ [], [[0, 1, 0], [1, 1, 1], [0, 0, 0]], [[0, 0, 0, 0], [2, 2, 2, 2], [0, 0, 0, 0], [0, 0, 0, 0]], [[3, 3], [3, 3]], [[0, 0, 4], [4, 4, 4], [0, 0, 0]], [[5, 0, 0], [5, 5, 5], [0, 0, 0]], [[0, 6, 6], [6, 6, 0], [0, 0, 0]], [[7, 7, 0], [0, 7, 7], [0, 0, 0]] ];
+
+            // Game State Variables
+            let grid, currentPiece, nextPiece, score, lines, level, isGameOver, dropCounter, dropInterval, animationFrameId;
+            let particles = [];
+
+            // --- Gamepad Support ---
+            let gamepad = null;
+            let lastGamepadButtons = [];
+            let gamepadMoveTimer = 0;
+            const GAMEPAD_MOVE_DELAY = 120; // ms between moves when holding D-pad
+
+            window.addEventListener('gamepadconnected', (e) => {
+                console.log('Gamepad connected:', e.gamepad.id);
+                gamepad = e.gamepad;
+                const controlsInfo = document.querySelector('#startScreen .controls-info');
+                if (controlsInfo) {
+                    controlsInfo.innerHTML = `
+                        <u>Keyboard</u><br>
+                        Arrows: Move | Up: Rotate | Space: Drop
+                        <br><br><u>Gamepad</u><br>
+                        D-Pad: Move | (A): Rotate | (B): Drop
+                    `;
+                }
+            });
+
+            window.addEventListener('gamepaddisconnected', (e) => {
+                console.log('Gamepad disconnected:', e.gamepad.id);
+                if (gamepad && gamepad.index === e.gamepad.index) {
+                    gamepad = null;
+                }
+            });
+
+            function handleGamepadInput() {
+                if (!navigator.getGamepads || !gamepad) return;
+
+                const gp = navigator.getGamepads()[gamepad.index];
+                if (!gp) return;
+
+                const nowButtons = gp.buttons.map(b => b.pressed);
+
+                // --- Button Presses for single actions (A, B, Start) ---
+                // A Button (Rotate) - Index 0
+                if (nowButtons[0] && !lastGamepadButtons[0]) {
+                    if (!isGameOver && startScreen.style.display === 'none') rotatePiece();
+                }
+                // B Button (Hard Drop) - Index 1
+                if (nowButtons[1] && !lastGamepadButtons[1]) {
+                    if (!isGameOver && startScreen.style.display === 'none') hardDrop();
+                }
+                // Start Button (Start/Restart) - Index 9
+                if (nowButtons[9] && !lastGamepadButtons[9]) {
+                    if (startScreen.style.display === 'flex') {
+                        handleStartGame();
+                    } else if (gameOverElement.style.display === 'flex') {
+                        handleRestartGame();
+                    }
+                }
+                
+                // --- D-Pad for continuous actions (Down, Left, Right) ---
+                const dpadDown = nowButtons[13];
+                const dpadLeft = nowButtons[14];
+                const dpadRight = nowButtons[15];
+
+                if (!isGameOver && startScreen.style.display === 'none') {
+                    if (dpadDown) {
+                        dropPiece();
+                        score++;
+                        updateUI();
+                    }
+                    
+                    const now = performance.now();
+                    if (now > gamepadMoveTimer) {
+                        if (dpadLeft) {
+                            movePiece(-1, 0);
+                            gamepadMoveTimer = now + GAMEPAD_MOVE_DELAY;
+                        } else if (dpadRight) {
+                            movePiece(1, 0);
+                            gamepadMoveTimer = now + GAMEPAD_MOVE_DELAY;
+                        }
+                    }
+                }
+
+                lastGamepadButtons = nowButtons;
+            }
+            // --- End Gamepad Support ---
+
+
+            // --- Start Screen Animation ---
+            const startCanvas = document.getElementById('startScreenCanvas');
+            const startCtx = startCanvas.getContext('2d');
+            let startAnimationId;
+            let fallingPieces = [];
+
+            function setupStartAnimation() {
+                startCanvas.width = window.innerWidth;
+                startCanvas.height = window.innerHeight;
+                const pieceCount = Math.floor(startCanvas.width / 100);
+                fallingPieces = [];
+                for (let i = 0; i < pieceCount; i++) {
+                    fallingPieces.push(createFallingPiece());
+                }
+            }
+
+            function createFallingPiece() {
+                const randIndex = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+                return {
+                    x: Math.random() * startCanvas.width,
+                    y: Math.random() * -startCanvas.height,
+                    shape: SHAPES[randIndex],
+                    color: COLORS[randIndex],
+                    speed: 2 + Math.random() * 3,
+                    size: 10 + Math.random() * 10
+                };
+            }
+
+            function animateStartScreen() {
+                startCtx.clearRect(0, 0, startCanvas.width, startCanvas.height);
+                fallingPieces.forEach(p => {
+                    p.y += p.speed;
+                    if (p.y > startCanvas.height) {
+                        Object.assign(p, createFallingPiece(), { y: -100 });
+                    }
+                    
+                    startCtx.fillStyle = p.color;
+                    startCtx.globalAlpha = 0.5;
+                    p.shape.forEach((row, y) => {
+                        row.forEach((value, x) => {
+                            if (value > 0) {
+                                startCtx.fillRect(p.x + x * p.size, p.y + y * p.size, p.size, p.size);
+                            }
+                        });
+                    });
+                });
+                startCtx.globalAlpha = 1.0;
+                startAnimationId = requestAnimationFrame(animateStartScreen);
+            }
+            // --- End Start Screen Animation ---
+
+            // --- Particle System ---
+            function createParticles(x, y, colorIndex) {
+                const color = COLORS[colorIndex];
+                const count = 5;
+                for (let i = 0; i < count; i++) {
+                    particles.push({
+                        x: (x + 0.5) * BLOCK_SIZE,
+                        y: (y + 0.5) * BLOCK_SIZE,
+                        vx: (Math.random() - 0.5) * 4,
+                        vy: (Math.random() - 0.5) * 4 - 2,
+                        lifespan: 30 + Math.random() * 20,
+                        color: color,
+                        size: 2 + Math.random() * 2
+                    });
+                }
+            }
+
+            function updateParticles() {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.2; // Gravity
+                    p.lifespan--;
+                    if (p.lifespan <= 0) {
+                        particles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawParticles() {
+                for (const p of particles) {
+                    context.globalAlpha = Math.max(0, p.lifespan / 50);
+                    context.fillStyle = p.color;
+                    context.fillRect(p.x, p.y, p.size, p.size);
+                }
+                context.globalAlpha = 1.0;
+            }
+            // --- End Particle System ---
+
+            let lastTime = 0;
+            function gameLoop(time = 0) {
+                if (isGameOver) return;
+                
+                const deltaTime = time - lastTime;
+                lastTime = time;
+                dropCounter += deltaTime;
+                if (dropCounter > dropInterval) dropPiece();
+                updateParticles();
+                draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            // New persistent loop for polling the gamepad
+            function pollGamepad() {
+                handleGamepadInput();
+                requestAnimationFrame(pollGamepad);
+            }
+
+            function startGame() {
+                changeBackground(); // Set initial random background
+                grid = createEmptyGrid();
+                score = lines = level = 0;
+                isGameOver = false;
+                particles = [];
+                nextPiece = createRandomPiece();
+                spawnNewPiece();
+                updateUI();
+                dropCounter = 0;
+                dropInterval = 1000;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                gameLoop();
+            }
+
+            function createEmptyGrid() {
+                return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            }
+
+            function createRandomPiece() {
+                const randIndex = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
+                return { x: 0, y: 0, shape: SHAPES[randIndex], colorIndex: randIndex };
+            }
+
+            function spawnNewPiece() {
+                currentPiece = nextPiece;
+                nextPiece = createRandomPiece();
+                currentPiece.x = Math.floor(COLS / 2) - Math.floor(currentPiece.shape[0].length / 2);
+                currentPiece.y = 0;
+                if (!isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y)) {
+                    gameOver();
+                }
+            }
+
+            function draw() {
+                if (backgroundImage.complete && backgroundImage.naturalHeight !== 0) {
+                    context.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+                } else {
+                    context.fillStyle = '#0d0d0d';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                
+                drawGrid();
+                drawPiece(currentPiece, context, BLOCK_SIZE, currentPiece.x, currentPiece.y);
+                drawParticles();
+                drawPreview();
+            }
+
+            function drawGrid() {
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (grid[y][x] > 0) drawBlock(context, x, y, grid[y][x], BLOCK_SIZE);
+                    }
+                }
+            }
+            
+            function drawPiece(piece, ctx, blockSize, offsetX, offsetY) {
+                piece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value > 0) drawBlock(ctx, offsetX + x, offsetY + y, piece.colorIndex, blockSize);
+                    });
+                });
+            }
+
+            function drawBlock(ctx, x, y, colorIndex, size) {
+                const color = COLORS[colorIndex];
+                const lightColor = `rgba(255, 255, 255, 0.2)`;
+                const darkColor = `rgba(0, 0, 0, 0.2)`;
+                const bevelSize = size / 10;
+
+                const gridX = x * size;
+                const gridY = y * size;
+
+                // Main block color
+                ctx.fillStyle = color;
+                ctx.fillRect(gridX, gridY, size, size);
+
+                // Bevel Highlight (top and left)
+                ctx.fillStyle = lightColor;
+                ctx.fillRect(gridX, gridY, size, bevelSize); // Top
+                ctx.fillRect(gridX, gridY, bevelSize, size); // Left
+
+                // Bevel Shadow (bottom and right)
+                ctx.fillStyle = darkColor;
+                ctx.fillRect(gridX, gridY + size - bevelSize, size, bevelSize); // Bottom
+                ctx.fillRect(gridX + size - bevelSize, gridY, bevelSize, size); // Right
+            }
+
+            function drawPreview() {
+                nextContext.fillStyle = '#111';
+                nextContext.fillRect(0, 0, nextCanvas.width, nextCanvas.height);
+                const piece = nextPiece;
+                const pieceSize = piece.shape.length;
+                const previewBlockSize = BLOCK_SIZE / 1.5;
+                const previewGridDim = nextCanvas.width / previewBlockSize; 
+                
+                const x = (previewGridDim - pieceSize) / 2;
+                const y = (previewGridDim - pieceSize) / 2;
+                
+                drawPiece(piece, nextContext, previewBlockSize, x, y);
+            }
+
+            function isValidMove(shape, x, y) {
+                for (let row = 0; row < shape.length; row++) {
+                    for (let col = 0; col < shape[row].length; col++) {
+                        if (shape[row][col] > 0) {
+                            let newX = x + col;
+                            let newY = y + row;
+                            if (newX < 0 || newX >= COLS || newY >= ROWS || (grid[newY] && grid[newY][newX] > 0)) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            function movePiece(dx, dy) {
+                if (!isValidMove(currentPiece.shape, currentPiece.x + dx, currentPiece.y + dy)) return;
+                currentPiece.x += dx;
+                currentPiece.y += dy;
+                playSound('move');
+            }
+
+            function dropPiece() {
+                if (!isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+                    lockPiece();
+                    return;
+                }
+                currentPiece.y++;
+                dropCounter = 0;
+            }
+
+            function hardDrop() {
+                let dropAmount = 0;
+                while (isValidMove(currentPiece.shape, currentPiece.x, currentPiece.y + 1)) {
+                    currentPiece.y++;
+                    dropAmount++;
+                }
+                score += dropAmount;
+                lockPiece();
+            }
+
+            function rotatePiece() {
+                let newShape = currentPiece.shape.map((_, i) => currentPiece.shape.map(col => col[i]).reverse());
+                let kick = 0;
+                if (!isValidMove(newShape, currentPiece.x, currentPiece.y)) {
+                    kick = currentPiece.x > COLS / 2 ? -1 : 1;
+                }
+                if (isValidMove(newShape, currentPiece.x + kick, currentPiece.y)) {
+                     currentPiece.x += kick;
+                     currentPiece.shape = newShape;
+                     playSound('rotate');
+                }
+            }
+
+            function lockPiece() {
+                currentPiece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value > 0) {
+                            grid[currentPiece.y + y][currentPiece.x + x] = currentPiece.colorIndex;
+                            createParticles(currentPiece.x + x, currentPiece.y + y, currentPiece.colorIndex);
+                        }
+                    });
+                });
+                playSound('land');
+                clearLines();
+                spawnNewPiece();
+            }
+
+            function clearLines() {
+                let linesCleared = 0;
+                for (let y = ROWS - 1; y >= 0; y--) {
+                    if (grid[y].every(value => value > 0)) {
+                        linesCleared++;
+                        grid.splice(y, 1);
+                        grid.unshift(Array(COLS).fill(0));
+                        y++;
+                    }
+                }
+                if (linesCleared > 0) {
+                    const points = [0, 100, 300, 500, 800];
+                    score += points[linesCleared] * (level + 1);
+                    lines += linesCleared;
+                    playSound(linesCleared === 4 ? 'tetris' : 'lineClear');
+                    if (lines >= (level + 1) * 10) {
+                        level++;
+                        dropInterval = Math.max(100, 1000 - level * 100);
+                        changeBackground(); // Change background on level up
+                        playSound('levelUp');
+                    }
+                    updateUI();
+                }
+            }
+
+            function updateUI() {
+                scoreElement.textContent = score;
+                linesElement.textContent = lines;
+                levelElement.textContent = level;
+            }
+
+            function gameOver() {
+                isGameOver = true;
+                cancelAnimationFrame(animationFrameId);
+                if (melodyPart) Tone.Transport.stop(); // Stop the music
+                playSound('gameOver');
+                gameOverElement.style.display = 'flex';
+            }
+
+            document.addEventListener('keydown', event => {
+                if (isGameOver || startScreen.style.display === 'flex') return;
+                switch (event.code) {
+                    case 'ArrowLeft': movePiece(-1, 0); break;
+                    case 'ArrowRight': movePiece(1, 0); break;
+                    case 'ArrowDown': dropPiece(); score++; updateUI(); break;
+                    case 'ArrowUp': rotatePiece(); break;
+                    case 'Space': event.preventDefault(); hardDrop(); break;
+                }
+            });
+
+            async function handleStartGame() {
+                await Tone.start(); // Required to start audio in the browser
+                setupMusic(); // No longer needs to wait
+                
+                if (melodyPart) { // Only start if music was set up
+                    Tone.Transport.start();
+                    melodyPart.start(0);
+                    bassPart.start(0);
+                }
+
+                cancelAnimationFrame(startAnimationId); // Stop the start screen animation
+                mainTitle.style.display = 'none'; // Hide the main title
+                startScreen.style.display = 'none';
+                gameContainer.style.display = 'flex';
+                startGame();
+            }
+
+            function handleRestartGame() {
+                if (melodyPart) Tone.Transport.start(); // Restart the music
+                gameOverElement.style.display = 'none';
+                startGame();
+            }
+
+            startButton.addEventListener('click', handleStartGame);
+            restartButton.addEventListener('click', handleRestartGame);
+            
+            // Initialize and start the background animation
+            setupStartAnimation();
+            animateStartScreen();
+            window.addEventListener('resize', setupStartAnimation);
+            
+            // Start the persistent gamepad polling loop
+            pollGamepad();
+        });
+    </script>
+</body>
+</html>
+

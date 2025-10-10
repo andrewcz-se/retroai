@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>HTML5 Gamepad Visualizer</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      color: #0ff;
+      margin-bottom: 10px;
+    }
+    #status {
+      margin-bottom: 20px;
+      color: #ccc;
+    }
+    .buttons, .axes {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 5px;
+      width: 80%;
+      max-width: 600px;
+    }
+    .button {
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 8px;
+      text-align: center;
+      transition: background 0.1s, transform 0.1s;
+    }
+    .pressed {
+      background: #0f0;
+      transform: scale(1.05);
+    }
+    .axes .axis {
+      border: 1px solid #555;
+      padding: 5px;
+      border-radius: 6px;
+      text-align: center;
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎮 Gamepad Visualizer</h1>
+  <div id="status">Connect a gamepad and press any button...</div>
+  <div class="buttons"></div>
+  <h3>Analog Sticks (Axes)</h3>
+  <div class="axes"></div>
+
+  <script>
+    const buttonsDiv = document.querySelector('.buttons');
+    const axesDiv = document.querySelector('.axes');
+    const statusDiv = document.getElementById('status');
+    let gamepadIndex = null;
+
+    window.addEventListener("gamepadconnected", (e) => {
+      gamepadIndex = e.gamepad.index;
+      statusDiv.textContent = `✅ Gamepad connected: ${e.gamepad.id}`;
+      createButtonElements(e.gamepad.buttons.length);
+      createAxisElements(e.gamepad.axes.length);
+      update();
+    });
+
+    window.addEventListener("gamepaddisconnected", () => {
+      statusDiv.textContent = "❌ Gamepad disconnected.";
+      gamepadIndex = null;
+      buttonsDiv.innerHTML = '';
+      axesDiv.innerHTML = '';
+    });
+
+    function createButtonElements(count) {
+      buttonsDiv.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const btn = document.createElement('div');
+        btn.className = 'button';
+        btn.textContent = `Button ${i}`;
+        buttonsDiv.appendChild(btn);
+      }
+    }
+
+    function createAxisElements(count) {
+      axesDiv.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const ax = document.createElement('div');
+        ax.className = 'axis';
+        ax.textContent = `Axis ${i}: 0.00`;
+        axesDiv.appendChild(ax);
+      }
+    }
+
+    function update() {
+      const gamepad = navigator.getGamepads()[gamepadIndex];
+      if (!gamepad) return;
+
+      // Update buttons
+      gamepad.buttons.forEach((btn, i) => {
+        const el = buttonsDiv.children[i];
+        if (btn.pressed) el.classList.add('pressed');
+        else el.classList.remove('pressed');
+        el.textContent = `Button ${i}: ${btn.value.toFixed(2)}`;
+      });
+
+      // Update axes
+      gamepad.axes.forEach((axis, i) => {
+        const el = axesDiv.children[i];
+        el.textContent = `Axis ${i}: ${axis.toFixed(2)}`;
+      });
+
+      requestAnimationFrame(update);
+    }
+  </script>
+</body>
+</html>

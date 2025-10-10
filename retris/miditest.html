@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Play MIDI with Tone.js</title>
+  <script src="https://unpkg.com/tone@next/build/Tone.js"></script>
+  <script type="module">
+    import { Midi } from "https://cdn.jsdelivr.net/npm/@tonejs/midi@next/dist/Midi.js";
+
+    async function playMIDI(url) {
+      // Load and parse the MIDI file
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      const midi = new Midi(arrayBuffer);
+
+      // Start the Audio Context before scheduling
+      await Tone.start();
+      console.log("Audio context started");
+
+      // Reset and schedule notes relative to Transport
+      Tone.Transport.cancel(); // clear previous notes
+
+      midi.tracks.forEach(track => {
+        const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+
+        track.notes.forEach(note => {
+          // Schedule each note at the correct time
+          Tone.Transport.schedule(time => {
+            synth.triggerAttackRelease(note.name, note.duration, time, note.velocity);
+          }, note.time);
+        });
+      });
+
+      // Set tempo from MIDI if available
+      if (midi.header.tempos.length > 0) {
+        const bpm = midi.header.tempos[0].bpm;
+        Tone.Transport.bpm.value = bpm;
+        console.log(`Tempo set to ${bpm} BPM`);
+      }
+
+      // Start playback
+      Tone.Transport.start("+0.1");
+      console.log("Playback started");
+    }
+
+    window.addEventListener("click", async () => {
+      await playMIDI("korobeiniki.mid");
+    });
+  </script>
+</head>
+<body style="display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;">
+  <h1>Click to Play MIDI 🎹</h1>
+</body>
+</html>
