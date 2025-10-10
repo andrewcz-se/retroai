@@ -124,6 +124,9 @@
     // Disable image smoothing to keep pixel art crisp
     ctx.imageSmoothingEnabled = false;
 
+    const backgroundImage = new Image();
+    backgroundImage.src = 'game_background.jpg'; // Placeholder filename
+
     let audioContext;
     let backgroundMusic = new Audio('background.wav'); // Placeholder
     backgroundMusic.loop = true;
@@ -803,6 +806,11 @@
     function draw() {
         ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
         
+        // Draw background image if it has loaded successfully
+        if (backgroundImage.complete && backgroundImage.naturalHeight !== 0) {
+            ctx.drawImage(backgroundImage, 0, 0, GAME_WIDTH, GAME_HEIGHT);
+        }
+        
         if (!gameRunning && !gameOver) {
             // --- Attract Mode Drawing ---
             frameCount++;
@@ -846,13 +854,13 @@
             ctx.shadowColor = "#00ff00";
             ctx.shadowBlur = titleGlow;
             ctx.font = "30px 'Press Start 2P'";
-            ctx.fillText("RETROVADERS", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
+            ctx.fillText("RETROVADERS", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 180);
             ctx.shadowBlur = 0; // Reset glow for other text
 
             // Blinking "Click to Start" text
             if (Math.floor(frameCount / 30) % 2 === 0) {
                 ctx.font = "20px 'Press Start 2P'";
-                ctx.fillText("Click to Start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
+                ctx.fillText("Click to Start", GAME_WIDTH / 2, GAME_HEIGHT / 3 + 1);
             }
             return;
         }
@@ -910,5 +918,7 @@
 
 </body>
 </html>
+
+
 
 
