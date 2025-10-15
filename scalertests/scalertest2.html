@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudo-3D Scaling with PNG File</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #111;
+            border: 2px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Configuration ---
+        const FOCAL_LENGTH = 300;
+        const NUM_OBJECTS = 200;
+        const SPEED = 2;
+
+        // --- Load Sprite Image ---
+        const spriteImage = new Image();
+
+        // The game loop will start only after the image is fully loaded.
+        spriteImage.onload = () => {
+            requestAnimationFrame(gameLoop);
+        };
+        
+        // This handler will alert you if the image fails to load.
+        // Check the browser's developer console for error details.
+        spriteImage.onerror = () => {
+            console.error("Error: The image 'sprite.png' could not be loaded.");
+            alert("Could not load sprite.png. Make sure it's in the same folder as the HTML file and the filename is correct.");
+        };
+
+        // ** THIS IS THE MODIFIED LINE **
+        // Point the src to your local file.
+        spriteImage.src = 'sprite2.png';
+
+        // --- Game Objects ---
+        const objects = [];
+        
+        for (let i = 0; i < NUM_OBJECTS; i++) {
+            objects.push({
+                x: (Math.random() - 0.5) * canvas.width * 2,
+                y: (Math.random() - 0.5) * canvas.height * 2,
+                z: Math.random() * 1000 + 1
+            });
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            objects.sort((a, b) => b.z - a.z);
+
+            objects.forEach(obj => {
+                obj.z -= SPEED;
+
+                if (obj.z <= 0) {
+                    obj.z = 1000 + Math.random() * 500;
+                    obj.x = (Math.random() - 0.5) * canvas.width * 2;
+                    obj.y = (Math.random() - 0.5) * canvas.height * 2;
+                }
+
+                const scale = FOCAL_LENGTH / (FOCAL_LENGTH + obj.z);
+                const screenX = canvas.width / 2 + obj.x * scale;
+                const screenY = canvas.height / 2 + obj.y * scale;
+                
+                const spriteWidth = spriteImage.width * scale;
+                const spriteHeight = spriteImage.height * scale;
+                
+                if (screenX + spriteWidth > 0 && screenX < canvas.width &&
+                    screenY + spriteHeight > 0 && screenY < canvas.height) {
+                    
+                    ctx.drawImage(
+                        spriteImage,
+                        screenX - spriteWidth / 2,
+                        screenY - spriteHeight / 2,
+                        spriteWidth,
+                        spriteHeight
+                    );
+                }
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+    </script>
+</body>
+</html>

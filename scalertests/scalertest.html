@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pseudo-3D Sprite Scaling Demo</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            background-color: #111;
+            border: 2px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- Configuration ---
+        const FOCAL_LENGTH = 300; // Affects the strength of the perspective effect
+        const NUM_OBJECTS = 200;  // How many stars/objects to create
+        const SPEED = 2;          // How fast the objects move towards the camera
+
+        // --- Create a Sprite Dynamically ---
+        // Instead of loading an image, we'll draw our sprite onto an off-screen canvas.
+        // This makes the example self-contained and easy to run.
+        const spriteCanvas = document.createElement('canvas');
+        const spriteCtx = spriteCanvas.getContext('2d');
+        spriteCanvas.width = 32;
+        spriteCanvas.height = 32;
+
+        spriteCtx.fillStyle = '#FFFFFF';
+        spriteCtx.beginPath();
+        spriteCtx.arc(16, 16, 16, 0, Math.PI * 2); // Draw a simple white circle
+        spriteCtx.fill();
+        // The spriteCanvas itself can now be used as an image source.
+
+        // --- Game Objects ---
+        const objects = [];
+        
+        // Populate the world with random objects
+        for (let i = 0; i < NUM_OBJECTS; i++) {
+            objects.push({
+                x: (Math.random() - 0.5) * canvas.width * 2,
+                y: (Math.random() - 0.5) * canvas.height * 2,
+                z: Math.random() * 1000 + 1 // Start at a random distance
+            });
+        }
+
+        function gameLoop() {
+            // Clear the canvas for the new frame
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Sort objects by Z-depth so far-away objects are drawn first (Painter's Algorithm)
+            objects.sort((a, b) => b.z - a.z);
+
+            // Update, project, and draw each object
+            objects.forEach(obj => {
+                // 1. UPDATE STATE: Move the object closer to the camera
+                obj.z -= SPEED;
+
+                // If the object has passed the camera, reset it to the back
+                if (obj.z <= 0) {
+                    obj.z = 1000 + Math.random() * 500; // Reset far away
+                    obj.x = (Math.random() - 0.5) * canvas.width * 2;
+                    obj.y = (Math.random() - 0.5) * canvas.height * 2;
+                }
+
+                // 2. PROJECT: Convert 3D position to 2D screen coordinates
+                const scale = FOCAL_LENGTH / (FOCAL_LENGTH + obj.z);
+                const screenX = canvas.width / 2 + obj.x * scale;
+                const screenY = canvas.height / 2 + obj.y * scale;
+                const spriteSize = spriteCanvas.width * scale;
+                
+                // 3. DRAW: Render the scaled sprite
+                // Check if the object is within the screen bounds before drawing
+                if (screenX + spriteSize > 0 && screenX < canvas.width &&
+                    screenY + spriteSize > 0 && screenY < canvas.height) {
+                    
+                    ctx.drawImage(
+                        spriteCanvas, // Our dynamically created sprite
+                        screenX - spriteSize / 2,
+                        screenY - spriteSize / 2,
+                        spriteSize,
+                        spriteSize
+                    );
+                }
+            });
+
+            // Request the next frame to create the animation loop
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game loop
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
