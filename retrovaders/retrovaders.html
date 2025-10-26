@@ -199,6 +199,11 @@
     let gameOver = false;
     let gameRunning = false;
 
+    // --- Animation State ---
+    let invaderAnimationTimer = 0;
+    let invaderCurrentFrame = 1;
+    const invaderAnimationSpeed = 30; // Switch frames every 30 game loops
+
     const keys = {
         ArrowLeft: false,
         ArrowRight: false,
@@ -339,6 +344,7 @@
         }
     }
 
+    // --- Invader Art - Frame 1 ---
     const alienDesigns = [
         // Type 1 (Squid-like)
         [
@@ -369,6 +375,38 @@
             "0   0"
         ]
     ];
+
+    // --- Invader Art - Frame 2 (Animation) ---
+    const alienDesignsFrame2 = [
+        // Type 1 (Squid-like) - legs move
+        [
+            "  0  ",
+            " 000 ",
+            "00000",
+            "00 00"
+        ],
+        // Type 2 (Crab-like) - claws move
+        [
+            " 0 0 ",
+            " 000 ",
+            "00000",
+            " 0 0 "
+        ],
+        // Type 3 (Saucer-like) - legs move
+        [
+            " 000 ",
+            "00000",
+            "0   0"
+        ],
+        // Type 4 - legs move
+        [
+            " 0 0 ",
+            "00000",
+            "0 0 0",
+            " 0 0 ",
+            " 0 0 "
+        ]
+    ];
     
     class Invader {
         constructor(x, y, type, color) {
@@ -380,12 +418,17 @@
             this.height = this.originalHeight;
             this.color = color;
             this.type = type % alienDesigns.length; // Cycle through designs
-            this.design = alienDesigns[this.type];
-            this.pixelSize = Math.floor(this.width / this.design[0].length);
+            
+            // Store both animation frames
+            this.designFrame1 = alienDesigns[this.type];
+            this.designFrame2 = alienDesignsFrame2[this.type];
+            
+            this.pixelSize = Math.floor(this.width / this.designFrame1[0].length);
         }
 
         draw() {
-            const design = this.design;
+            // Choose the correct frame based on the global timer
+            const design = (invaderCurrentFrame === 1) ? this.designFrame1 : this.designFrame2;
             const pixelSize = this.pixelSize;
 
             ctx.fillStyle = this.color;
@@ -579,6 +622,10 @@
         powerUps = [];
         mysteryShip = null;
 
+        // Reset animation timer
+        invaderAnimationTimer = 0;
+        invaderCurrentFrame = 1;
+
         createInvaders();
         createShields();
         
@@ -629,6 +676,13 @@
         if (!gameRunning) return;
         
         player.update();
+
+        // Update invader animation frame
+        invaderAnimationTimer++;
+        if (invaderAnimationTimer >= invaderAnimationSpeed) {
+            invaderAnimationTimer = 0;
+            invaderCurrentFrame = invaderCurrentFrame === 1 ? 2 : 1;
+        }
 
         // Spawn and update mystery ship
         if (!mysteryShip && Math.random() < 0.0005) { // A small chance to spawn each frame
