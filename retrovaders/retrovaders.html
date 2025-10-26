@@ -124,8 +124,27 @@
     // Disable image smoothing to keep pixel art crisp
     ctx.imageSmoothingEnabled = false;
 
+    // Array of placeholder background images
+    const backgroundImages = [
+        'game_background.jpg',
+        'game_background2.jpg',
+        'game_background3.jpg',
+        'game_background4.jpg'
+        // Add as many background image filenames as you like
+    ];
+    
     const backgroundImage = new Image();
-    backgroundImage.src = 'game_background.jpg'; // Placeholder filename
+    let currentBackgroundIndex = -1; // To ensure the next level gets a new one
+
+    function setRandomBackground() {
+        let newIndex = Math.floor(Math.random() * backgroundImages.length);
+        // Ensure the new background is different from the current one, if possible
+        if (backgroundImages.length > 1 && newIndex === currentBackgroundIndex) {
+            newIndex = (newIndex + 1) % backgroundImages.length;
+        }
+        currentBackgroundIndex = newIndex;
+        backgroundImage.src = backgroundImages[currentBackgroundIndex];
+    }
 
     let audioContext;
     let backgroundMusic = new Audio('background.wav'); // Placeholder
@@ -577,6 +596,7 @@
         mysteryShip = null;
         createInvaders();
         createShields();
+        setRandomBackground(); // Change background on level up
         showMessageBox(`Level ${level}`, "Get Ready!", 2000);
     }
 
@@ -647,9 +667,14 @@
             if(Math.random() < invaderShootChance) {
                 invaderLasers.push(new Laser(invader.x + invader.width / 2 - 2.5, invader.y + invader.height, invaderLaserSpeed, '#ff0000'));
             }
-            if(invader.y + invader.height >= player.y) {
+            
+            // --- UPDATED GAME OVER LOGIC ---
+            // Check if any invader has reached the top of the shield line
+            const shieldTopY = GAME_HEIGHT - 120; // This is the shield's 'y' position
+            if(invader.y + invader.height >= shieldTopY) {
                  setGameOver(true, score);
             }
+            // --- END OF UPDATE ---
         });
 
         if (wallHit) {
@@ -854,13 +879,13 @@
             ctx.shadowColor = "#00ff00";
             ctx.shadowBlur = titleGlow;
             ctx.font = "30px 'Press Start 2P'";
-            ctx.fillText("RETROVADERS", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 180);
+            ctx.fillText("RETROVADERS", GAME_WIDTH / 2, GAME_HEIGHT / 2 - 40);
             ctx.shadowBlur = 0; // Reset glow for other text
 
             // Blinking "Click to Start" text
             if (Math.floor(frameCount / 30) % 2 === 0) {
                 ctx.font = "20px 'Press Start 2P'";
-                ctx.fillText("Click to Start", GAME_WIDTH / 2, GAME_HEIGHT / 3 + 1);
+                ctx.fillText("Click to Start", GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20);
             }
             return;
         }
@@ -910,6 +935,7 @@
     
     // Create initial assets for attract mode
     createStars();
+    setRandomBackground(); // Set initial random background
     
     // Start the game
     gameLoop();
@@ -918,7 +944,4 @@
 
 </body>
 </html>
-
-
-
 
