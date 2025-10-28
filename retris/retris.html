@@ -147,8 +147,15 @@
         }
         
         #startScreen .game-over-box {
-            border-color: #00ffff;
-            box-shadow: 0 0 25px rgba(0, 255, 255, 0.7);
+            /* Remove the box styling for a cleaner logo look */
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            /* Add flex properties to stack and center items */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
         #gameOver .game-over-box {
@@ -156,8 +163,9 @@
             box-shadow: 0 0 20px #cc0000;
         }
 
+        /* Removed animated h1 from start screen */
         #startScreen .game-over-box h1 {
-            animation: flicker 1.5s infinite alternate;
+           display: none;
         }
 
         .game-over-box h1 {
@@ -168,6 +176,15 @@
 
         .game-over-box h2 {
              color: #cc0000;
+        }
+        
+        /* Style for the new logo placeholder */
+        #startScreenLogo {
+            max-width: 80%;
+            height: auto;
+            margin-bottom: 40px;
+            /* Optional: add a subtle glow to the logo */
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.3));
         }
 
         .controls-info {
@@ -188,7 +205,7 @@
         }
         
         #startButton {
-             background-color: #39ff14; /* Neon Green */
+             background-color: #0DFF72; /* Neon Green #39ff14*/
              animation: button-glow 1.5s infinite alternate ease-in-out;
         }
         
@@ -239,10 +256,12 @@
     <div id="startScreen" class="game-over-overlay" style="display: flex;">
         <canvas id="startScreenCanvas"></canvas>
         <div class="game-over-box">
-            <h1>RETRIS</h1>
+            <!-- Flashing h1 text removed, replaced with logo placeholder -->
+            <img id="startScreenLogo" src="retris-logo.png" alt="Retris Logo">
             <button id="startButton">START GAME</button>
             <p class="controls-info">
-                Use Arrow Keys to Move & Rotate<br>Spacebar to Hard Drop
+                Keyboard:<br>Use Arrow Keys to Move & Rotate<br>Spacebar to Hard Drop<br><br>
+				Gamepad:<br>Use D-Pad to Move<br>A to Rotate<br>B to Hard Drop<br>Start to Start Game
             </p>
         </div>
     </div>
@@ -766,7 +785,9 @@
             });
 
             function handleStartGame() {
-                musicAudio.play();
+                // Ensure audio context is started by user gesture
+                musicAudio.play().catch(e => console.error("Music play failed:", e));
+                
                 cancelAnimationFrame(startAnimationId); // Stop the start screen animation
                 mainTitle.style.display = 'none'; // Hide the main title
                 startScreen.style.display = 'none';
@@ -775,7 +796,7 @@
             }
 
             function handleRestartGame() {
-                musicAudio.play();
+                musicAudio.play().catch(e => console.error("Music restart failed:", e));
                 gameOverElement.style.display = 'none';
                 startGame();
             }
