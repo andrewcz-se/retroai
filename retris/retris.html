@@ -369,7 +369,8 @@
 
             // Game State Variables
             let grid, currentPiece, nextPiece, score, lines, level, isGameOver, dropCounter, dropInterval, animationFrameId;
-            let particles = [];
+            let particles = []; // For visual effects
+            let pieceBag = []; // For the 7-bag randomizer
 
             // --- Gamepad Support ---
             let gamepad = null;
@@ -568,6 +569,7 @@
                 grid = createEmptyGrid();
                 score = lines = level = 0;
                 isGameOver = false;
+                pieceBag = []; // Reset the piece bag
                 particles = [];
                 nextPiece = createRandomPiece();
                 spawnNewPiece();
@@ -582,9 +584,25 @@
                 return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
             }
 
+            function fillPieceBag() {
+                // Create a bag with one of each piece index (1-7)
+                const pieces = [1, 2, 3, 4, 5, 6, 7];
+
+                // Shuffle the bag (Fisher-Yates algorithm)
+                for (let i = pieces.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [pieces[i], pieces[j]] = [pieces[j], pieces[i]];
+                }
+                pieceBag = pieces;
+            }
+
             function createRandomPiece() {
-                const randIndex = Math.floor(Math.random() * (SHAPES.length - 1)) + 1;
-                return { x: 0, y: 0, shape: SHAPES[randIndex], colorIndex: randIndex };
+                // If the bag is empty, create and shuffle a new one
+                if (pieceBag.length === 0) {
+                    fillPieceBag();
+                }
+                const pieceIndex = pieceBag.pop(); // Get the next piece from the bag
+                return { x: 0, y: 0, shape: SHAPES[pieceIndex], colorIndex: pieceIndex };
             }
 
             function spawnNewPiece() {
@@ -817,4 +835,3 @@
     </script>
 </body>
 </html>
-
