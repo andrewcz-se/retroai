@@ -200,7 +200,10 @@
         'game_background.jpg',
         'game_background2.jpg',
         'game_background3.jpg',
-        'game_background4.jpg'
+        'game_background4.jpg',
+        'game_background5.jpg',
+        'game_background6.jpg',
+        'game_background7.jpg'
         
     ];
     let currentBackgroundIndex = -1;
@@ -1063,8 +1066,8 @@
         };
         titleText = new PIXI.Text("RETROVADERS", titleStyle);
         titleText.anchor.set(0.5);
-        titleText.x = GAME_WIDTH / 2;
-        titleText.y = GAME_HEIGHT / 2 - 40;
+        titleText.x = GAME_WIDTH / 2; // was 2
+        titleText.y = GAME_HEIGHT / 2 - 20; //was 40
         attractContainer.addChild(titleText);
         
         const startStyle = {
