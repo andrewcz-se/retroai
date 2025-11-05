@@ -1,5 +1,7 @@
 # **AI Arcade Classics**
 
+[**Launch AI Arcade Classics**](https://andrewcz-se.github.io/retroai/)
+
 ## **About The Project**
 
 Welcome to AI Arcade Classics, a collection of retro arcade games reimagined for the modern web. This project explores the capabilities of AI in software development by recreating the look, feel, and fun of timeless arcade classics.
