@@ -1,0 +1,1614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retrovaders (PixiJS Edition)</title>
+    
+    <!-- PixiJS v7 Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.2/pixi.min.js"></script>
+    <!--<script src="https://cdn.jsdelivr.net/npm/pixi-filters@6.0.4/dist/pixi-filters.min.js"></script>-->
+  
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .game-container {
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 30px rgba(50, 255, 50, 0.5);
+            position: relative;
+        }
+
+        #pixi-canvas-container {
+            background-color: #0a0a0a;
+            display: block;
+            box-shadow: inset 0 0 15px rgba(50, 255, 50, 0.4);
+ 
+        }
+        #scanline-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0, 0, 0, 0.0) 0px,
+                rgba(0, 0, 0, 0.0) 2px,
+                rgba(0, 0, 0, 0.3) 3px,
+                rgba(0, 0, 0, 0.3) 4px
+            );
+            z-index: 1;
+        }
+        .ui {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            font-size: 16px;
+            position: absolute;
+            top: 0;
+            width: 100%;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 40px;
+            border: 2px solid #fff;
+            box-shadow: 0 0 15px #fff;
+            text-align: center;
+            z-index: 10;
+        }
+        #message-box h2 {
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        #message-box button {
+            font-family: 'Press Start 2P', cursive;
+            background: #fff;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        #message-box button:hover {
+            background-color: #ff00ff;
+            color: #fff;
+            box-shadow: 0 0 10px #ff00ff;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container" class="game-container">
+    <div class="ui">
+        <div>Score: <span id="score">0</span></div>
+        <div>Level: <span id="level">1</span></div>
+        <div>Lives: <span id="lives">3</span></div>
+    </div>
+
+    <div id="pixi-canvas-container"></div>
+    
+    <div id="scanline-overlay"></div>
+    <div id="message-box" class="hidden">
+        <h2 id="message-title">Game Over</h2>
+        <p id="message-text">Your score: 0</p>
+        <button id="restart-button">Restart</button>
+    </div>
+</div>
+
+<script type="module">
+    // --- UI Elements ---
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const livesEl = document.getElementById('lives');
+    const messageBox = document.getElementById('message-box');
+    const messageTitle = document.getElementById('message-title');
+    const messageText = document.getElementById('message-text');
+    const restartButton = document.getElementById('restart-button');
+    const canvasContainer = document.getElementById('pixi-canvas-container');
+    const activeTickers = [];
+
+    const GAME_WIDTH = 800;
+    const GAME_HEIGHT = 600;
+
+    const pixelSize = 10;
+    console.log("pixelSize =", pixelSize);
+
+    // --- PixiJS Setup ---
+    const app = new PIXI.Application({
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        backgroundColor: 0x0a0a0a,
+        autoDensity: true,
+        resolution: window.devicePixelRatio || 1,
+    });
+
+    app.ticker.add(update);
+
+    canvasContainer.appendChild(app.view);
+    
+    globalThis.app = app;
+
+    // --- Game Layers (Containers) ---
+    // We use containers to manage Z-order
+    const attractContainer = new PIXI.Container();
+    const gameContainer = new PIXI.Container();
+    
+    const backgroundContainer = new PIXI.Container();
+    const shieldContainer = new PIXI.Container();
+    const invaderContainer = new PIXI.Container();
+    const laserContainer = new PIXI.Container();
+    const playerContainer = new PIXI.Container(); // To hold the player
+    const powerUpContainer = new PIXI.Container();
+    const particleContainer = new PIXI.Container(); // For pixi-particles
+    const mysteryShipContainer = new PIXI.Container();
+    const g = new PIXI.Graphics();
+
+    // Expose containers for console
+    globalThis.gameContainer = gameContainer;
+    globalThis.invaderContainer = invaderContainer;
+    globalThis.backgroundContainer = backgroundContainer;   
+
+    // Add containers to the main game stage in render order
+    gameContainer.addChild(
+        shieldContainer,
+        invaderContainer,
+        laserContainer,
+        playerContainer,
+        powerUpContainer,
+        mysteryShipContainer,
+        particleContainer // Particles on top
+    );
+    
+    // Add both main containers to the app stage
+    app.stage.addChild(backgroundContainer); 
+    app.stage.addChild(gameContainer);
+    app.stage.addChild(attractContainer);
+
+    let particleTexture;
+    {
+        const particleGfx = new PIXI.Graphics();
+        particleGfx.beginFill(0xffffff);
+        particleGfx.drawCircle(0, 0, 6);
+        particleGfx.endFill();
+        particleTexture = app.renderer.generateTexture(particleGfx);
+        particleGfx.destroy();
+    }
+    globalThis.particleTexture = particleTexture;
+
+    // Array of placeholder background images
+    const backgroundImages = [
+        'game_background.jpg',
+        'game_background2.jpg',
+        'game_background3.jpg',
+        'game_background4.jpg'
+        
+    ];
+    let currentBackgroundIndex = -1;
+    let backgroundSprite = new PIXI.Sprite(PIXI.Texture.EMPTY);
+    backgroundContainer.addChild(backgroundSprite);
+
+    async function setRandomBackground() {
+        let newIndex = Math.floor(Math.random() * backgroundImages.length);
+        if (backgroundImages.length > 1 && newIndex === currentBackgroundIndex) {
+            newIndex = (newIndex + 1) % backgroundImages.length;
+        }
+        currentBackgroundIndex = newIndex;
+        
+        try {
+            // Use PIXI.Assets.load for modern, async loading
+            const texture = await PIXI.Assets.load(backgroundImages[currentBackgroundIndex]);
+            backgroundSprite.texture = texture;
+            backgroundSprite.width = GAME_WIDTH;
+            backgroundSprite.height = GAME_HEIGHT;
+        } catch (e) {
+            console.error("Error loading background texture:", e);
+            // On error (e.g., 404), create a fallback visual
+            const fallback = new PIXI.Graphics();
+            fallback.beginFill(0x1a1a1a);
+            fallback.drawRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            fallback.endFill();
+            const fallbackTexture = app.renderer.generateTexture(fallback);
+            backgroundSprite.texture = fallbackTexture;
+            fallback.destroy();
+        }
+    }
+
+    // --- Audio 
+    let audioContext;
+    const sounds = {
+        shoot: { play: () => console.log("Audio: shoot") },
+        invaderKilled: { play: () => console.log("Audio: invaderKilled") },
+        playerDeath: { play: () => console.log("Audio: playerDeath") },
+        powerup: { play: () => console.log("Audio: powerup") },
+        mysteryShipHit: { play: () => console.log("Audio: mysteryShipHit") }
+    };
+    let backgroundMusic = { play: () => console.log("Audio: play music"), pause: () => console.log("Audio: pause music"), currentTime: 0, loop: true };
+
+    try {
+        const createDummySound = () => {
+             return { play: () => {}, pause: () => {}, currentTime: 0, loop: false };
+        };
+        sounds.shoot = new Audio('shoot.wav'); 
+        sounds.invaderKilled = new Audio('invader_killed.wav'); 
+        sounds.playerDeath = new Audio('player_death.wav'); 
+        //sounds.powerup = createDummySound();
+        sounds.mysteryShipHit = new Audio('mystery_ship.wav'); 
+        //backgroundMusic = createDummySound();
+        //backgroundMusic.loop = true;
+
+    } catch (e) {
+        console.warn("AudioContext not supported or sounds failed to load.");
+    }
+    
+    function playSound(type) {
+       if (sounds[type]) {
+           const sound = sounds[type];
+           sound.currentTime = 0;
+           sound.play(); 
+       }
+    }
+    function playBackgroundMusic() { backgroundMusic.play(); }
+    function stopBackgroundMusic() { backgroundMusic.pause(); backgroundMusic.currentTime = 0; }
+
+
+    // --- Game State ---
+    let player;
+    let invaders = [];
+    globalThis.invaders = invaders;
+    let playerLasers = [];
+    let invaderLasers = [];
+    let shields = [];
+    let powerUps = [];
+    let mysteryShip = null;
+    let activeEmitters = []; // For pixi-particles that aren't used currently
+
+    // Attract mode variables
+    let stars = [];
+    let titleText;
+    let startText;
+    let titleGlow = 0;
+    let frameCount = 0;
+
+    let score = 0;
+    let level = 1;
+    let lives = 3;
+    let gameOver = false;
+    let gameRunning = false;
+
+    // --- Animation State ---
+    let invaderAnimationTimer = 0;
+    let invaderCurrentFrame = 1;
+    const invaderAnimationSpeed = 30; // Switch frames every 30 game loops
+
+    const keys = {
+        ArrowLeft: false,
+        ArrowRight: false,
+        Space: false
+    };
+
+    // --- Texture Generation ---
+    // Create textures from canvas drawings to use as sprites
+    const invaderDesigns = [
+        // Type 1 (Squid-like)
+        [
+            "  0  ",
+            " 000 ",
+            "00000",
+            "0 0 0"
+        ],
+        // Type 2 (Crab-like)
+        [
+            "0   0",
+            " 000 ",
+            "00000",
+            "0   0"
+        ],
+        // Type 3 (Saucer-like)
+        [
+            " 000 ",
+            "00000",
+            " 0 0 "
+        ],
+        // Type 4 (more complex, 5x5 pixels, scaled)
+        [
+            " 0 0 ",
+            "00000",
+            "0 0 0",
+            " 0 0 ",
+            "0   0"
+        ]
+    ];
+
+    // --- Invader Art - Frame 2 (Animation) ---
+    const invaderDesignsFrame2 = [
+        // Type 1 (Squid-like) - legs move
+        [
+            "  0  ",
+            " 000 ",
+            "00000",
+            "00 00"
+        ],
+        // Type 2 (Crab-like) - claws move
+        [
+            " 0 0 ",
+            " 000 ",
+            "00000",
+            " 0 0 "
+        ],
+        // Type 3 (Saucer-like) - legs move
+        [
+            " 000 ",
+            "00000",
+            "0   0"
+        ],
+        // Type 4 - legs move
+        [
+            " 0 0 ",
+            "00000",
+            "0 0 0",
+            " 0 0 ",
+            " 0 0 "
+        ]
+    ];
+
+    let invaderTextures = [];
+
+    function buildInvaderFrames(type, colorHex) {
+    const d1 = invaderDesigns[type];
+    const d2 = invaderDesignsFrame2[type];
+
+    function make(design) {
+        const g = new PIXI.Graphics();
+        const colorNum = typeof colorHex === "string" ? parseInt(colorHex.replace("#",""), 16) : colorHex;
+        g.beginFill(colorNum);
+        for (let r = 0; r < design.length; r++) {
+        const row = design[r];
+        for (let c = 0; c < row.length; c++) {
+            if (row[c] !== " ") g.drawRect(c * pixelSize, r * pixelSize, pixelSize, pixelSize);
+        }
+        }
+        g.endFill();
+        return g;
+    }
+
+    const f1 = make(d1);
+    const f2 = make(d2);
+    f2.visible = false;
+    return [f1, f2];
+    }
+
+    const invaderBaseWidth = 5 * pixelSize; // 5 "pixels" wide
+    const invaderBaseHeight = 5 * pixelSize; // 5 "pixels" tall
+    const colors = [0xff4141, 0x41ff41, 0x4141ff, 0xffff41, 0xff41ff, 0x41ffff];
+
+    function generatePixelTexture(design, color) {
+    if (!design) return null;
+
+    const g = new PIXI.Graphics();
+
+    // Convert color safely
+    const colorNum =
+        typeof color === "string"
+        ? parseInt(color.replace("#", ""), 16)
+        : color;
+
+    g.beginFill(colorNum, 1);
+
+    // Draw the pixel pattern
+    for (let r = 0; r < design.length; r++) {
+        const row = design[r];
+        for (let c = 0; c < row.length; c++) {
+        if (row[c] !== " ") {
+            g.drawRect(
+            c * pixelSize,
+            r * pixelSize,
+            pixelSize,
+            pixelSize
+            );
+        }
+        }
+    }
+
+  g.endFill();
+
+  const tex = app.renderer.generateTexture(g);
+  return tex;
+}
+
+
+    function createInvaderTextures() {
+        invaderDesigns.forEach((design, type) => {
+            invaderTextures[type] = [];
+            colors.forEach((color, colorIndex) => { 
+                const frame1 = generatePixelTexture(design, color); 
+                const frame2 = generatePixelTexture(invaderDesignsFrame2[type], color);
+
+                console.log("Texture test", type, colorIndex,
+                    frame1 instanceof PIXI.Texture,
+                    frame1?.width, frame1?.height);
+                
+                // Diagnostic log
+                if (!frame1 || !frame2) {
+                    console.error(`Failed to generate textures for type ${type}, color ${colorIndex}`);
+                }
+
+                invaderTextures[type][colorIndex] = [frame1, frame2];
+            });
+        });
+        console.log("Invader textures created.", invaderTextures); 
+    }
+
+    // Lightweight sprite-based explosion (no external libs) = 0xFFFF00
+        const activeParticles = []; // {sprite, vx, vy, life, age, rot, rotSpd, scale0}
+
+        function createExplosion(x, y, color = 0xFFFF00) {
+        // safety: make sure we have a texture
+        const tex = globalThis.particleTexture || PIXI.Texture.YELLOW;
+
+        const COUNT = 100;              // number of particles
+        const LIFE_MIN = 0.35, LIFE_MAX = 0.9; // seconds
+        const SPEED_MIN = 180, SPEED_MAX = 460;
+        const START_SCALE = 2.4;
+
+        for (let i = 0; i < COUNT; i++) {
+            // random direction + speed
+            const a = Math.random() * Math.PI * 2;
+            const s = SPEED_MIN + Math.random() * (SPEED_MAX - SPEED_MIN);
+            const vx = Math.cos(a) * s;
+            const vy = Math.sin(a) * s * 0.9; // slight vertical squeeze
+
+            // sprite
+            const sp = new PIXI.Sprite(tex);
+            sp.anchor.set(0.5);
+            sp.x = x; sp.y = y;
+            sp.scale.set(START_SCALE * (0.8 + Math.random() * 0.6));
+            sp.alpha = 1;
+            sp.blendMode = PIXI.BLEND_MODES.ADD; // glow
+            sp.tint = color; // tint to explosion color
+
+            particleContainer.addChild(sp);
+
+            activeParticles.push({
+            sprite: sp,
+            vx, vy,
+            life: LIFE_MIN + Math.random() * (LIFE_MAX - LIFE_MIN),
+            age: 0,
+            rot: Math.random() * Math.PI * 2,
+            rotSpd: (Math.random() - 0.5) * 8, // rotation speed
+            scale0: sp.scale.x
+            });
+        }
+
+        // shockwave ring (safe)
+        const ring = new PIXI.Graphics();
+        ring.lineStyle(2, color, 1);
+        ring.drawCircle(0, 0, 10);
+        ring.x = x; ring.y = y;
+        particleContainer.addChild(ring);
+
+        const animateRing = (delta) => {
+        if (!ring.destroyed && ring.parent) {
+            ring.scale.x += 0.12 * delta;
+            ring.scale.y += 0.12 * delta;
+            ring.alpha -= 0.06 * delta;
+        }
+        if (ring.alpha <= 0 || ring.destroyed || !ring.parent) {
+            app.ticker.remove(animateRing);
+            const idx = activeTickers.indexOf(animateRing);
+            if (idx >= 0) activeTickers.splice(idx, 1);
+            if (ring.parent) ring.parent.removeChild(ring);
+            ring.destroy();
+        }
+        };
+        app.ticker.add(animateRing);
+        activeTickers.push(animateRing);
+        }
+
+        function createSmoke(x, y) {
+        const COUNT = 60;
+        for (let i = 0; i < COUNT; i++) {
+            const sp = new PIXI.Sprite(particleTexture);
+            sp.anchor.set(0.5);
+            sp.x = x; sp.y = y;
+            sp.tint = 0x555555;
+            sp.alpha = 0.5;
+            sp.scale.set(1 + Math.random());
+            particleContainer.addChild(sp);
+
+            const vx = (Math.random() - 0.5) * 100;
+            const vy = (Math.random() - 0.5) * 100;
+            const life = 2 + Math.random() * 1.5;
+
+            activeParticles.push({
+            sprite: sp,
+            vx, vy,
+            life, age: 0,
+            rot: Math.random() * Math.PI,
+            rotSpd: (Math.random() - 0.5) * 2,
+            scale0: sp.scale.x
+            });
+        }
+        }
+
+        function createSparks(x, y) {
+            for (let i = 0; i < 10; i++) {
+                const sp = new PIXI.Sprite(particleTexture);
+                sp.anchor.set(0.5);
+                sp.x = x; sp.y = y;
+                sp.tint = 0xffffcc;
+                sp.alpha = 1;
+                sp.scale.set(0.4 + Math.random() * 0.3);
+                particleContainer.addChild(sp);
+
+                const vx = (Math.random() - 0.5) * 800;
+                const vy = (Math.random() - 0.5) * 800;
+                const life = 0.4 + Math.random() * 0.4;
+
+                activeParticles.push({
+                sprite: sp,
+                vx, vy,
+                life, age: 0,
+                rot: Math.random() * Math.PI,
+                rotSpd: 0,
+                scale0: sp.scale.x
+                });
+            }
+        }
+
+        function shakeScreen(intensity = 5, duration = 15) {
+        let frames = 0;
+        const baseX = gameContainer.x;
+        const baseY = gameContainer.y;
+        app.ticker.add(function shaker() {
+            frames++;
+            gameContainer.x = baseX + (Math.random() - 0.5) * intensity;
+            gameContainer.y = baseY + (Math.random() - 0.5) * intensity;
+            if (frames > duration) {
+            app.ticker.remove(shaker);
+            gameContainer.x = baseX;
+            gameContainer.y = baseY;
+            }
+        });
+        }
+
+
+    class Player {
+        constructor() {
+            this.width = 50;
+            this.height = 30;
+            this.speed = 5;
+            this.color = 0x00ff00; // Use hex codes for Pixi
+            this.shootCooldown = 0;
+            this.rapidFire = false;
+            this.invincible = false;
+            this.invincibleTimer = 0;
+            
+            // Create a PIXI.Graphics object
+            this.graphics = new PIXI.Graphics();
+            this.draw(); // Draw the ship once
+            
+            this.graphics.x = (GAME_WIDTH - this.width) / 2;
+            this.graphics.y = GAME_HEIGHT - this.height - 20;
+            
+            // Add to the player container
+            playerContainer.addChild(this.graphics);
+        }
+
+        draw() {
+            // Draw the player ship onto the graphics object
+            this.graphics.clear();
+            this.graphics.beginFill(this.color);
+      
+            // Cannon
+            this.graphics.drawRect(this.width * 0.45, 0, this.width * 0.1, this.height * 0.4);
+            // Main central body
+            this.graphics.drawRect(this.width * 0.2, this.height * 0.2, this.width * 0.6, this.height * 0.8);
+            // Left wing
+            this.graphics.drawRect(0, this.height * 0.6, this.width * 0.2, this.height * 0.4);
+            // Right wing
+            this.graphics.drawRect(this.width * 0.8, this.height * 0.6, this.width * 0.2, this.height * 0.4);
+            
+            this.graphics.endFill();
+            // Store original x/y for collision logic
+            this.x = this.graphics.x;
+            this.y = this.graphics.y;
+        }
+        
+        updateBlink() {
+            if (this.invincible) {
+                 this.graphics.visible = Math.floor(this.invincibleTimer / 10) % 2 === 1;
+            } else {
+                this.graphics.visible = true;
+            }
+        }
+
+        update() {
+
+            if (keys.ArrowLeft && this.graphics.x > 0) {
+                this.graphics.x -= this.speed;
+            }
+            if (keys.ArrowRight && this.graphics.x < GAME_WIDTH - this.width) {
+                this.graphics.x += this.speed;
+            }
+            
+            // Sync logic position
+            this.x = this.graphics.x;
+            
+            if (keys.Space && this.shootCooldown <= 0) {
+                this.shoot();
+                this.shootCooldown = this.rapidFire ? 5 : 20;
+            }
+            if (this.shootCooldown > 0) {
+                this.shootCooldown--;
+            }
+            if(this.invincible) {
+                this.invincibleTimer--;
+                if(this.invincibleTimer <= 0) {
+                    this.invincible = false;
+                }
+            }
+            this.updateBlink();
+        }
+        
+        shoot() {
+            playSound('shoot');
+            playerLasers.push(new Laser(this.graphics.x + this.width / 2 - 2.5, this.graphics.y));
+        }
+        
+        hit() {
+            if (this.invincible) return;
+            lives--;
+            livesEl.textContent = lives;
+            // Use new particle explosion
+            createExplosion(this.graphics.x + this.width / 2, this.graphics.y + this.height/2, this.color);
+            playSound('playerDeath');
+            if (lives <= 0) {
+                setGameOver(true, score);
+            } else {
+                this.resetPosition();
+                this.invincible = true;
+                this.invincibleTimer = 180; // 3 seconds
+            }
+        }
+
+        resetPosition() {
+            this.graphics.x = (GAME_WIDTH - this.width) / 2;
+            this.x = this.graphics.x;
+        }
+        
+        destroy() {
+            //Get rid of this.graphics.destroy(); as it crashes Pixi.Js on restart
+              if (this.graphics && this.graphics.parent) {
+                this.graphics.parent.removeChild(this.graphics);
+            }
+            this.graphics = null;
+        }
+    }
+
+    class Laser {
+        constructor(x, y, speed = -8, color = 0x00ff00) {
+            this.x = x;
+            this.y = y;
+            this.width = 5;
+            this.height = 15;
+            this.speed = speed;
+            this.color = color;
+            
+            this.graphics = new PIXI.Graphics();
+            this.graphics.beginFill(color);
+            this.graphics.drawRect(0, 0, this.width, this.height);
+            this.graphics.endFill();
+            
+            this.graphics.x = x;
+            this.graphics.y = y;
+            laserContainer.addChild(this.graphics);
+        }
+
+        update() {
+            this.graphics.y += this.speed;
+            this.y = this.graphics.y;
+        }
+        
+        destroy() {
+            this.graphics.destroy();
+        }
+    }
+
+    class MysteryShip {
+        constructor() {
+            this.width = 60;
+            this.height = 25;
+            this.speed = 2;
+            this.direction = Math.random() < 0.5 ? 1 : -1; 
+            this.color = 0xff00ff;
+            this.points = [500, 1000, 1500][Math.floor(Math.random() * 3)];
+            
+            this.graphics = new PIXI.Graphics();
+            this.graphics.beginFill(this.color);
+
+            // Draw a blocky UFO shape
+            this.graphics.drawRect(this.width * 0.2, 0, this.width * 0.6, this.height * 0.4);
+            this.graphics.drawRect(0, this.height * 0.4, this.width, this.height * 0.6);
+            this.graphics.endFill();
+            
+            this.graphics.x = this.direction === 1 ? -this.width : GAME_WIDTH;
+            this.graphics.y = 30;
+            
+            this.x = this.graphics.x; // Sync logic position
+            this.y = this.graphics.y;
+            
+            mysteryShipContainer.addChild(this.graphics);
+        }
+
+        update() {
+            this.graphics.x += this.speed * this.direction;
+            this.x = this.graphics.x; // Sync
+            
+            // Remove if it goes off-screen
+            if ((this.direction === 1 && this.x > GAME_WIDTH) || (this.direction === -1 && this.x < -this.width)) {
+                this.destroy();
+                mysteryShip = null;
+            }
+        }
+        
+        destroy() {
+            if (this.graphics) {
+                this.graphics.destroy();
+            }
+        }
+    }
+    
+    
+    class Invader {
+    constructor(x, y, type, colorIndex) {
+        console.log("Invader received args:", x, y, type, colorIndex);
+
+        this.type = type % invaderDesigns.length;
+        this.colorIndex = colorIndex % colors.length;
+
+        const colorHex =
+        typeof colors[this.colorIndex] === "string"
+            ? parseInt(colors[this.colorIndex].replace("#", ""), 16)
+            : colors[this.colorIndex];
+
+        this.colorHex = colorHex;
+
+        const [frame1, frame2] = invaderTextures[this.type][this.colorIndex];
+
+        this.sprite1 = new PIXI.Sprite(frame1.clone());
+        this.sprite2 = new PIXI.Sprite(frame2.clone());
+        this.sprite2.visible = false;
+
+        this.width  = this.sprite1.width;
+        this.height = this.sprite1.height;
+
+        this.container = new PIXI.Container();
+        this.container.addChild(this.sprite1);
+        this.container.addChild(this.sprite2);
+
+        // set position here — only once
+        this.container.x = x;
+        this.container.y = y;
+        this.x = x;
+        this.y = y;
+
+        invaderContainer.addChild(this.container);
+    }
+
+    updateFrame(frame) {
+        this.sprite1.visible = frame === 1;
+        this.sprite2.visible = frame === 2;
+    }
+
+        updatePosition(dx, dy) {
+        this.container.x += dx;
+        this.container.y += dy;
+        this.x = this.container.x;
+        this.y = this.container.y;
+        }
+
+    destroy() {
+        this.container.destroy({ children: true });
+    }
+    }
+
+    // --- Fleet movement variables (restored) ---
+    let invaderDirection = 1;
+    let invaderSpeed = 0.4;
+    let invaderDrop = 10;
+    let invaderShootChance = 0.001;
+    let invaderLaserSpeed = 1.5;
+
+    class Shield {
+        constructor(x) {
+            this.x = x;
+            this.y = GAME_HEIGHT - 120;
+            this.width = 100;
+            this.height = 40;
+            this.parts = [];
+            this.container = new PIXI.Container();
+            this.container.x = x;
+            this.container.y = this.y; // Corrected: Was 'y', now 'this.y'
+            shieldContainer.addChild(this.container);
+            this.init();
+        }
+        
+        init() {
+            const partSize = 10;
+            
+            for(let r = 0; r < 4; r++) {
+                for(let c = 0; c < 10; c++) {
+                    // Carve out an arch in the middle
+                    if (r > 1 && c > 2 && c < 7) continue;
+                    
+                    const partGraphics = new PIXI.Graphics();
+                    partGraphics.x = c * partSize;
+                    partGraphics.y = r * partSize;
+                    
+                    const part = {
+                        x: this.x + c * partSize, // Store global x for collision
+                        y: this.y + r * partSize, // Store global y for collision
+                        size: partSize, 
+                        health: 3, 
+                        graphics: partGraphics
+                    };
+                    
+                    this.drawPart(part); // Initial draw
+                    this.parts.push(part);
+                    this.container.addChild(partGraphics);
+                }
+            }
+        }
+        
+        drawPart(part) {
+            // Draw the shield part with alpha based on health
+            part.graphics.clear();
+            part.graphics.beginFill(0x00FF80, part.health / 3); // (color, alpha)
+            part.graphics.drawRect(0, 0, part.size, part.size);
+            part.graphics.endFill();
+        }
+        
+        checkCollision(laser) {
+            for(let p = this.parts.length - 1; p >= 0; p--) {
+                const part = this.parts[p];
+                 if (
+                    laser.x < part.x + part.size &&
+                    laser.x + laser.width > part.x &&
+                    laser.y < part.y + part.size &&
+                    laser.y + laser.height > part.y
+                ) {
+                    part.health--;
+                    if(part.health <= 0) {
+                        part.graphics.destroy();
+                        this.parts.splice(p, 1);
+                    } else {
+                        this.drawPart(part); // Redraw with lower health
+                    }
+                    return true; // Collision happened
+                }
+            }
+            return false;
+        }
+        
+        destroy() {
+            this.container.destroy({ children: true });
+            this.parts = [];
+        }
+    }
+    
+    class PowerUp {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.size = 20;
+            this.speedY = 2;
+            this.type = Math.random() < 0.5 ? 'rapidFire' : 'shield';
+            this.color = this.type === 'rapidFire' ? 0xffff00 : 0x00ffff;
+            this.text = this.type === 'rapidFire' ? 'R' : 'S';
+
+            // Create a container for the power-up (circle + text)
+            this.container = new PIXI.Container();
+            this.container.x = x;
+            this.container.y = y;
+            
+            // Draw the circle
+            const circle = new PIXI.Graphics();
+            circle.beginFill(this.color);
+            circle.drawCircle(0, 0, this.size / 2);
+            circle.endFill();
+            this.container.addChild(circle);
+            
+            // Add the text
+            const label = new PIXI.Text(this.text, {
+                fontFamily: '"Press Start 2P"',
+                fontSize: 12,
+                fill: 0x000000,
+                align: 'center'
+            });
+            label.anchor.set(0.5);
+            this.container.addChild(label);
+            
+            powerUpContainer.addChild(this.container);
+        }
+
+        update() {
+            this.container.y += this.speedY;
+            this.y = this.container.y; // Sync logic position
+        }
+        
+        destroy() {
+            this.container.destroy({ children: true });
+        }
+    }
+
+
+    function createStars() {
+        stars = [];
+        for (let i = 0; i < 200; i++) {
+            // Use a simple graphics object for each star
+            const starGraphics = new PIXI.Graphics();
+            starGraphics.beginFill(0xFFFFFF);
+            starGraphics.drawCircle(0, 0, Math.random() + 1);
+            starGraphics.endFill();
+            
+            const star = {
+                graphics: starGraphics,
+                x: (Math.random() - 0.5) * GAME_WIDTH,
+                y: (Math.random() - 0.5) * GAME_HEIGHT,
+                z: Math.random() * GAME_WIDTH,
+            };
+            stars.push(star);
+            attractContainer.addChild(starGraphics);
+        }
+    }
+
+    function createInvaders() {
+    console.log("--- createInvaders() called ---");
+    console.log("GAME_WIDTH", GAME_WIDTH, "GAME_HEIGHT", GAME_HEIGHT);
+
+    // Clear global array without rebinding it
+    invaders.length = 0;
+
+    const invaderSpacingX = 60;
+    const invaderSpacingY = 50;
+
+    const fleetMarginX = GAME_WIDTH * 0.1;
+    const fleetWidth = GAME_WIDTH - (fleetMarginX * 2);
+    const cols = Math.floor(fleetWidth / invaderSpacingX);
+
+    const baseRows = Math.floor(GAME_HEIGHT / 250);
+    const rows = Math.max(4, baseRows) + level;
+
+    const startX = (GAME_WIDTH - cols * invaderSpacingX) / 2;
+    const startY = 50;
+
+    console.log(`Creating ${rows} rows of ${cols} invaders. Total: ${rows * cols}`);
+
+    console.log({
+    fleetMarginX,
+    fleetWidth,
+    cols,
+    invaderSpacingX,
+    startX,
+    typeCount: invaderDesigns.length,
+    level
+    });
+
+    for (let r = 0; r < rows; r++) {
+        const colorIndex = r % 6;
+        const type = r % invaderDesigns.length;
+        for (let c = 0; c < cols; c++) {
+        const x = startX + c * invaderSpacingX;
+        const y = startY + r * invaderSpacingY;
+        console.log("createInvaders -> new Invader(",
+    startX + c * invaderSpacingX,
+    startY + r * invaderSpacingY,
+    type,
+    colorIndex, ")");
+        const inv = new Invader(x, y, type, colorIndex); 
+        invaders.push(inv);
+        }
+    }
+
+    // Re-expose the *actual* live array for the console
+    globalThis.invaders = invaders;
+    console.log("createInvaders filled:", invaders.length, "objects");
+    }
+   
+    function createShields() {
+        shields.forEach(shield => shield.destroy()); // Clear old shields
+        shields = [];
+        const shieldCount = 4;
+        const shieldSpacing = (GAME_WIDTH - shieldCount * 100) / (shieldCount + 1);
+        for(let i=0; i<shieldCount; i++) {
+            shields.push(new Shield(shieldSpacing + i * (100 + shieldSpacing)));
+        }
+    }
+    
+    async function initAttractMode() {
+        gameContainer.visible = false;
+        attractContainer.visible = true;
+        
+        createStars();
+        
+        const titleStyle = {
+            fontFamily: '"Press Start 2P"',
+            fontSize: 30,
+            fill: 0x00ff00,
+            align: 'center',
+            dropShadow: true,
+            dropShadowColor: 0x00ff00,
+            dropShadowBlur: 10,
+            dropShadowDistance: 0
+        };
+        titleText = new PIXI.Text("RETROVADERS", titleStyle);
+        titleText.anchor.set(0.5);
+        titleText.x = GAME_WIDTH / 2;
+        titleText.y = GAME_HEIGHT / 2 - 40;
+        attractContainer.addChild(titleText);
+        
+        const startStyle = {
+            fontFamily: '"Press Start 2P"',
+            fontSize: 20,
+            fill: 0x00ff00,
+            align: 'center'
+        };
+        startText = new PIXI.Text("Click to Start", startStyle);
+        startText.anchor.set(0.5);
+        startText.x = GAME_WIDTH / 2;
+        startText.y = GAME_HEIGHT / 2 + 20;
+        attractContainer.addChild(startText);
+
+        // --- FIX: Add background to attract mode and await it ---
+        await setRandomBackground();
+    }
+    
+    function cleanupAttractMode() {
+        attractContainer.visible = false;
+        attractContainer.removeChildren();
+        stars = [];
+        console.log('Attract mode cleaned up');
+    }
+    
+    function initGame() {
+        score = 0;
+        level = 1;
+        lives = 3;
+        gameOver = false;
+        gameRunning = true;
+        
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        livesEl.textContent = lives;
+        
+        // Clear all old game objects
+        player?.destroy();
+        invaders.forEach(i => i.destroy());
+        playerLasers.forEach(l => l.destroy());
+        invaderLasers.forEach(l => l.destroy());
+        powerUps.forEach(p => p.destroy());
+        shields.forEach(s => s.destroy());
+        mysteryShip?.destroy();
+        //activeEmitters.forEach(e => e.destroy());
+        
+        laserContainer.removeChildren();
+        playerContainer.removeChildren();
+        powerUpContainer.removeChildren();
+        shieldContainer.removeChildren();
+        mysteryShipContainer.removeChildren();
+        particleContainer.removeChildren();
+
+        console.log("initGame() starting...");
+        player = new Player();
+        console.log("Player created:", player);
+
+        invaders = [];
+        playerLasers = [];
+        invaderLasers = [];
+        powerUps = [];
+        mysteryShip = null;
+       // activeEmitters = [];
+
+        invaderAnimationTimer = 0;
+        invaderCurrentFrame = 1;
+        
+        // Show game, hide attract
+        gameContainer.visible = true;
+        cleanupAttractMode();
+
+        messageBox.classList.add('hidden');
+        
+        setRandomBackground();
+        
+        playBackgroundMusic();
+
+        // Make sure layer is visible and on top
+        invaderContainer.visible = true;
+        invaderContainer.alpha = 1;
+        gameContainer.sortableChildren = true;
+        invaderContainer.zIndex = 100;
+
+        // Ensure textures exist before building any invaders
+        if (!invaderTextures || Object.keys(invaderTextures).length === 0) {
+            console.log("Generating invader textures...");
+            createInvaderTextures();
+        }
+        createInvaderTextures();
+        createInvaders();
+        gameContainer.addChild(invaderContainer); // moves invader layer to the top
+        console.log("After initGame:", invaders.length, invaderContainer.children.length);
+        createShields();
+
+    }
+    
+    function levelUp() {
+        level++;
+        levelEl.textContent = level;
+        
+        // Clear objects
+        player.resetPosition();
+        playerLasers.forEach(l => l.destroy());
+        playerLasers = [];
+        invaderLasers.forEach(l => l.destroy());
+        invaderLasers = [];
+        powerUps.forEach(p => p.destroy());
+        powerUps = [];
+        mysteryShip?.destroy();
+        mysteryShip = null;
+
+        // Clear containers
+        laserContainer.removeChildren();
+        powerUpContainer.removeChildren();
+        mysteryShipContainer.removeChildren();
+        invaderContainer.removeChildren();
+       
+        // Create new objects
+        createInvaders();
+        createShields();
+        
+        setRandomBackground(); // Change background on level up
+        showMessageBox(`Level ${level}`, "Get Ready!", 2000);
+    }
+
+    function showMessageBox(title, text, duration) {
+        messageTitle.textContent = title;
+        messageText.textContent = text;
+        restartButton.classList.add('hidden');
+        messageBox.classList.remove('hidden');
+
+        if(duration) {
+            setTimeout(() => {
+                if(!gameOver) messageBox.classList.add('hidden');
+            }, duration);
+        }
+    }
+
+    function setGameOver(isGameOver, finalScore) {
+        gameOver = isGameOver;
+        gameRunning = false;
+        if(isGameOver) {
+            player.destroy(); // Player is gone
+            messageTitle.textContent = "Game Over";
+            messageText.textContent = `Your final score: ${finalScore}`;
+            restartButton.classList.remove('hidden');
+            messageBox.classList.remove('hidden');
+            stopBackgroundMusic();
+        }
+    }
+
+    // --- Main Update Function (Logic) ---
+    function update(delta) {
+            // Normalise delta; if undefined, assume 1
+            if (!Number.isFinite(delta)) {
+            delta = 1;
+            }
+
+        if (!gameRunning && !gameOver) {
+            frameCount++;
+
+            // 1. Update 3D "moving forward" starfield
+            const speed = 2 * delta; // Scale by delta
+            const centerX = GAME_WIDTH / 2;
+            const centerY = GAME_HEIGHT / 2;
+
+            stars.forEach(star => {
+                star.z -= speed; 
+                if (star.z <= 0) {
+                    star.x = (Math.random() - 0.5) * GAME_WIDTH;
+                    star.y = (Math.random() - 0.5) * GAME_HEIGHT;
+                    star.z = GAME_WIDTH;
+                }
+
+                const perspective = GAME_WIDTH / star.z;
+                const screenX = centerX + star.x * perspective;
+                const screenY = centerY + star.y * perspective;
+                const screenScale = perspective * 0.01; // Adjust scale factor
+
+                star.graphics.x = screenX;
+                star.graphics.y = screenY;
+                star.graphics.scale.set(screenScale);
+                
+                // Hide if off-screen
+                star.graphics.visible = (screenX > 0 && screenX < GAME_WIDTH && screenY > 0 && screenY < GAME_HEIGHT);
+            });
+            
+            // 3. Update pulsing title and blinking text
+            if (titleText) { // Add check in case it hasn't loaded
+                titleGlow = 10 + Math.sin(frameCount * 0.05) * 5;
+                titleText.style.dropShadowBlur = titleGlow;
+            }
+            if (startText) { // Add check
+                startText.visible = Math.floor(frameCount / 30) % 2 === 0;
+            }
+            return; // Don't run game logic
+        }
+
+        // --- Game Running Logic ---
+        if (!gameRunning) return;
+        
+        player.update();
+
+        // Update invader animation frame
+        invaderAnimationTimer += delta;
+        if (invaderAnimationTimer >= invaderAnimationSpeed) {
+            invaderAnimationTimer = 0;
+            invaderCurrentFrame = invaderCurrentFrame === 1 ? 2 : 1;
+            invaders.forEach(invader => invader.updateFrame(invaderCurrentFrame));
+        }
+
+        // Spawn and update mystery ship
+        if (!mysteryShip && Math.random() < 0.0005 * delta) { 
+            mysteryShip = new MysteryShip();
+        }
+        if (mysteryShip) {
+            mysteryShip.update();
+        }
+
+        // Update player lasers
+        for (let i = playerLasers.length - 1; i >= 0; i--) {
+            const laser = playerLasers[i];
+            laser.update();
+            if (laser.y < -laser.height) {
+                laser.destroy();
+                playerLasers.splice(i, 1);
+            }
+        }
+        
+        // Update invader lasers
+         for (let i = invaderLasers.length - 1; i >= 0; i--) {
+            const laser = invaderLasers[i];
+            laser.update();
+            if (laser.y > GAME_HEIGHT) {
+                laser.destroy();
+                invaderLasers.splice(i, 1);
+            }
+        }
+        
+        // Update invaders
+        // --- Invader movement & bounce logic ---
+        let wallHit = false;
+        const currentInvaderSpeed = invaderSpeed * invaderDirection * delta;
+
+        // Track the furthest edges of the whole formation
+        let minX = Infinity;
+        let maxX = -Infinity;
+
+        invaders.forEach(invader => {
+        invader.updatePosition(currentInvaderSpeed, 0);
+        const leftEdge  = invader.container.x;
+        const rightEdge = invader.container.x + invader.width;
+
+        if (leftEdge < minX)  minX = leftEdge;
+        if (rightEdge > maxX) maxX = rightEdge;
+
+        // shooting
+        if (Math.random() < (invaderShootChance * delta)) {
+            invaderLasers.push(
+            new Laser(
+                invader.container.x + invader.width / 2 - 2.5,
+                invader.container.y + invader.height,
+                invaderLaserSpeed,
+                0xff0000
+            )
+            );
+        }
+
+        const shieldTopY = GAME_HEIGHT - 120;
+        if (invader.container.y + invader.height >= shieldTopY) {
+            setGameOver(true, score);
+        }
+        });
+
+        if (minX <= 0 || maxX >= GAME_WIDTH) {
+        console.log("Wall hit! reversing direction");
+        invaderDirection *= -1;
+        invaders.forEach(invader => invader.updatePosition(0, invaderDrop));
+        }
+        
+        // Update powerups
+        for(let i = powerUps.length - 1; i >= 0; i--) {
+            powerUps[i].update();
+            if (powerUps[i].y > GAME_HEIGHT) {
+                powerUps[i].destroy();
+                powerUps.splice(i, 1);
+            }
+        }
+
+        // --- Collision Detection ---
+        // Player lasers vs Mystery Ship
+        if (mysteryShip) {
+            for (let i = playerLasers.length - 1; i >= 0; i--) {
+                const laser = playerLasers[i];
+                if (laser && checkCollision(laser, mysteryShip)) {
+                    laser.destroy();
+                    playerLasers.splice(i, 1);
+                    
+                    score += mysteryShip.points;
+                    scoreEl.textContent = score;
+                    createExplosion(mysteryShip.x + mysteryShip.width / 2, mysteryShip.y + mysteryShip.height / 2, mysteryShip.color);
+                    playSound('mysteryShipHit');
+                    showMessageBox(`+${mysteryShip.points}`, "BONUS!", 1000);
+                    
+                    mysteryShip.destroy();
+                    mysteryShip = null;
+                    break;
+                }
+            }
+        }
+
+        // Player lasers vs Invaders
+        for (let i = playerLasers.length - 1; i >= 0; i--) {
+            const laser = playerLasers[i];
+            let hit = false;
+            for (let j = invaders.length - 1; j >= 0; j--) {
+                const invader = invaders[j];
+                if (laser && invader && checkCollision(laser, invader)) {
+                    // Get color before destroying
+                    const invaderColor = invader.colorHex; 
+                    console.log("invaderColor =", invaderColor);
+                    
+                    laser.destroy();
+                    playerLasers.splice(i, 1);
+                    invader.destroy();
+                    invaders.splice(j, 1);
+                    
+                    score += 100;
+                    scoreEl.textContent = score;
+                    createExplosion(invader.x + invader.width/2, invader.y + invader.height/2, invaderColor);
+                    createSmoke(invader.x + invader.width/2, invader.y + invader.height/2);
+                    shakeScreen(8, 20);
+                    //createSparks(invader.x + invader.width/2, invader.y + invader.height/2);
+                    playSound('invaderKilled');
+                    
+                    if(Math.random() < 0.1) {
+                        powerUps.push(new PowerUp(invader.x + invader.width/2, invader.y + invader.height/2));
+                    }
+                    hit = true;
+                    break; 
+                }
+            }
+            if (hit) break; // Break outer loop if laser hit
+        }
+        
+        // Invader lasers vs Player
+        for(let i = invaderLasers.length - 1; i >= 0; i--) {
+            const laser = invaderLasers[i];
+            if (checkCollision(laser, player)) {
+                laser.destroy();
+                invaderLasers.splice(i, 1);
+                player.hit();
+                break;
+            }
+        }
+        
+        // Lasers vs Shields
+        const allLasers = [...playerLasers, ...invaderLasers];
+        for(let l = allLasers.length - 1; l >= 0; l--) {
+            const laser = allLasers[l];
+            if (!laser) continue; // Safety check
+            let laserRemoved = false;
+            for(const shield of shields) {
+                if (shield.checkCollision(laser)) {
+                    // Shield logic handled removal of its own part
+                    laser.destroy();
+                    if (playerLasers.includes(laser)) {
+                       playerLasers.splice(playerLasers.indexOf(laser), 1);
+                    } else if (invaderLasers.includes(laser)) {
+                       invaderLasers.splice(invaderLasers.indexOf(laser), 1);
+                    }
+                    laserRemoved = true;
+                    break;
+                }
+            }
+            if(laserRemoved) continue; // Go to next laser
+        }
+
+        // Player vs Powerups
+        for (let i = powerUps.length - 1; i >= 0; i--) {
+        const powerUp = powerUps[i];
+        const px = player.graphics ? player.graphics.x + player.width / 2 : player.x + player.width / 2;
+        const py = player.graphics ? player.graphics.y + player.height / 2 : player.y + player.height / 2;
+        const ux = powerUp.container ? powerUp.container.x : (powerUp.graphics ? powerUp.graphics.x : powerUp.x);
+        const uy = powerUp.container ? powerUp.container.y : (powerUp.graphics ? powerUp.graphics.y : powerUp.y);
+        const size = powerUp.size || 20;
+
+        const dist = Math.hypot(px - ux, py - uy);
+        if (dist < player.width / 2 + size / 2) {
+            activatePowerUp(powerUp.type);
+            createExplosion(ux, uy, 0x00ffff); // nice pickup sparkle
+            powerUp.destroy();
+            powerUps.splice(i, 1);
+        }
+        }
+
+        // Check for level clear
+        if (invaders.length === 0 && gameRunning) {
+            levelUp();
+        }
+
+        // === Update sprite-based particles (no dependencies) ===
+        {
+        const dt = delta / 60;               // seconds
+        const drag = 0.98;                   // slight slowdown
+        const gravity = 0;                   // set to e.g. 300 for falling sparks
+        for (let i = activeParticles.length - 1; i >= 0; i--) {
+            const p = activeParticles[i];
+            p.age += dt;
+            const t = p.age / p.life;          // 0..1
+
+            if (t >= 1) {
+            // remove
+            if (p.sprite.parent) p.sprite.parent.removeChild(p.sprite);
+            p.sprite.destroy();
+            activeParticles.splice(i, 1);
+            continue;
+            }
+
+            // motion
+            p.vx *= drag;
+            p.vy = p.vy * drag + gravity * dt;
+            p.sprite.x += p.vx * dt;
+            p.sprite.y += p.vy * dt;
+
+            // rotation
+            p.rot += p.rotSpd * dt;
+            p.sprite.rotation = p.rot;
+
+            // fade + shrink over life
+            p.sprite.alpha = 1 - t;
+            const s = p.scale0 * (1 - t * 0.9);
+            p.sprite.scale.set(Math.max(0.05, s));
+        }
+        }
+
+    }
+    
+
+    function checkCollision(a, b) {
+        const ax = a.container ? a.container.x : (a.graphics ? a.graphics.x : a.x);
+        const ay = a.container ? a.container.y : (a.graphics ? a.graphics.y : a.y);
+        const aw = a.width ?? (a.container?.width ?? a.graphics?.width ?? 0);
+        const ah = a.height ?? (a.container?.height ?? a.graphics?.height ?? 0);
+
+        const bx = b.container ? b.container.x : (b.graphics ? b.graphics.x : b.x);
+        const by = b.container ? b.container.y : (b.graphics ? b.graphics.y : b.y);
+        const bw = b.width ?? (b.container?.width ?? b.graphics?.width ?? 0);
+        const bh = b.height ?? (b.container?.height ?? b.graphics?.height ?? 0);
+
+        return (
+            ax < bx + bw &&
+            ax + aw > bx &&
+            ay < by + bh &&
+            ay + ah > by
+        );
+    }
+
+    function restartGame() {
+    console.log("Restarting safely...");
+    app.ticker.stop(); // stop updates immediately
+
+    // Let Pixi finish its current render cycle
+    setTimeout(() => {
+        cleanupBeforeRestart();
+        initGame();
+        app.ticker.start();
+    }, 50); // 50ms = next frame, ensures GPU flush complete
+    }
+
+    function cleanupBeforeRestart() {
+    console.log("Cleaning up before restart...");
+
+    // Stop ring and shake tickers
+    for (const cb of activeTickers) app.ticker.remove(cb);
+    activeTickers.length = 0;
+
+    // Stop particle updates
+    for (let i = activeParticles.length - 1; i >= 0; i--) {
+        const p = activeParticles[i];
+        if (p.sprite?.parent) p.sprite.parent.removeChild(p.sprite);
+        p.sprite = null;
+    }
+    activeParticles.length = 0;
+
+    // Clear all game containers safely
+    for (const cont of [
+        invaderContainer,
+        laserContainer,
+        playerContainer,
+        powerUpContainer,
+        mysteryShipContainer,
+        particleContainer,
+        shieldContainer
+    ]) {
+        cont.removeChildren();
+    }
+
+    }
+    
+    
+    function activatePowerUp(type) {
+        playSound('powerup');
+        if (type === 'rapidFire') {
+            player.rapidFire = true;
+            setTimeout(() => { player.rapidFire = false; }, 5000); // 5 seconds
+        } else if (type === 'shield') {
+            player.invincible = true;
+            player.invincibleTimer = 300; // 5 seconds of invincibility
+        }
+    }
+
+    app.ticker.add((ticker) => {
+        update(ticker.deltaTime); // deltaTime is a normalized value
+    });
+    
+    
+    // --- Event Listeners ---
+    window.addEventListener('keydown', (e) => {
+        if (e.code in keys) {
+            keys[e.code] = true;
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.code in keys) {
+            keys[e.code] = false;
+        }
+    });
+    
+    // We make the canvas container 'interactive' to listen for clicks
+    canvasContainer.style.cursor = 'pointer';
+    canvasContainer.addEventListener('click', () => {
+        if (!gameRunning && !gameOver) {
+            initGame();
+        }
+    });
+
+    restartButton.addEventListener('click', restartGame);
+    
+ 
+    initAttractMode(); // Start with the attract mode
+    
+</script>
+
+</body>
+</html>
