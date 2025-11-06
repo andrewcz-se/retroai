@@ -252,7 +252,8 @@
              return { play: () => {}, pause: () => {}, currentTime: 0, loop: false };
         };
         sounds.shoot = new Audio('shoot.wav'); 
-        sounds.invaderKilled = new Audio('invader_killed.wav'); 
+        //sounds.invaderKilled = new Audio('invader_killed.wav'); 
+        sounds.invaderKilled = new Audio('player_death.wav'); 
         sounds.playerDeath = new Audio('player_death.wav'); 
         //sounds.powerup = createDummySound();
         sounds.mysteryShipHit = new Audio('mystery_ship.wav'); 
@@ -1052,7 +1053,7 @@
         gameContainer.visible = false;
         attractContainer.visible = true;
         
-        createStars();
+        //createStars();
         
         const titleStyle = {
             fontFamily: '"Press Start 2P"',
@@ -1082,8 +1083,15 @@
         startText.y = GAME_HEIGHT / 2 + 20;
         attractContainer.addChild(startText);
 
+        /*let startlogo = PIXI.Sprite.from('retrovaderslogo.png');
+        startlogo.anchor.set(0.5);
+        startlogo.x = GAME_WIDTH / 2; // was 2
+        startlogo.y = GAME_HEIGHT / 2 - 20; //was 40
+        attractContainer.addChild(startlogo);*/
+
         // --- FIX: Add background to attract mode and await it ---
         await setRandomBackground();
+
     }
     
     function cleanupAttractMode() {
