@@ -12,12 +12,12 @@ Each game was developed as a creative collaboration with Gemini, a large languag
 
 This collection features the following classic games:
 
-* Retrovaders  
-* Retroids  
-* Retroman  
-* Retrofrog  
-* Retrobubble  
-* Retris
+* Retrovaders (Space Invaders)
+* Retroids (Asteroids)  
+* Retroman (Pac Man)  
+* Retrofrog (Frogger)  
+* Retrobubble (Bubble Bobble)  
+* Retris (Tetris)
 
 ## **Tech Stack**
 
@@ -26,5 +26,3 @@ This project was developed using fundamental web technologies:
 * **HTML5:** For the structure and content of the web pages.  
 * **CSS3:** For styling, layout, and creating the retro, CRT-monitor aesthetic.  
 * **JavaScript (with Canvas 2D):** For game logic, rendering graphics, and handling user input within each game.
-
-The core challenge was to build each game as a self-contained, single-file application, showcasing a minimalist and efficient approach to web development.
