@@ -18,10 +18,11 @@ This collection features the following classic games:
 * Retrofrog (Frogger)  
 * Retrobubble (Bubble Bobble)  
 * Retris (Tetris)
+  * Two versions - Retris and Retris (GPU) which uses PixiJS to render as the standard version was experiencing slowdown drawing particle effects with Canvas 2D
 
 ## **Tech Stack**
 
-This project was developed using fundamental web technologies:
+This project was developed using standard web technologies:
 
 * **HTML5:** For the structure and content of the web pages.  
 * **CSS3:** For styling, layout, and creating the retro, CRT-monitor aesthetic.  
